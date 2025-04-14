@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.io.File;
 
 @SpringBootApplication
-public class UserDomainApplication {
+public class MusicHubApplication {
 
 	public static void main(String[] args) {
 		File envFile = new File(".env");
@@ -32,7 +32,7 @@ public class UserDomainApplication {
 			System.setProperty("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI", dotenv.get("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI", ""));
 		}
 
-		SpringApplication.run(UserDomainApplication.class, args);
+		SpringApplication.run(MusicHubApplication.class, args);
 	}
 
 }
