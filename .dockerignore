@@ -1,6 +1,0 @@
-target/
-build/
-*.log
-.env
-.idea/
-.vscode/
