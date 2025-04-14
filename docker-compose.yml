@@ -6,6 +6,8 @@ services:
     container_name: musicHub
     ports:
       - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
+    env_file:
+      - .env
     depends_on:
       - mongodb
     environment:
@@ -34,7 +36,7 @@ services:
 
   mongodb:
     image: mongo:6
-    container_name: mongodb
+    container_name: mongo
     ports:
       - "27017:27017"
     environment:
@@ -44,3 +46,9 @@ services:
       - mongo_data:/data/db
     networks:
       - app-network
+
+networks:
+  app-network:
+
+volumes:
+  mongo_data:
