@@ -1,5 +1,6 @@
 package MusicHub.configuration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -26,7 +27,8 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfiguration {
-    private final String signerKey = System.getProperty("JWT_SIGNER_KEY");
+    @Value("${JWT_SIGNER_KEY}")
+    private String signerKey;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
