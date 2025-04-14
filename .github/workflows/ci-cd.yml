@@ -20,14 +20,8 @@ jobs:
           java-version: '17'
           distribution: 'adoptopenjdk'
 
-      - name: Set up Maven
-        uses: actions/setup-java@v2
-        with:
-          java-version: '17'
-          distribution: 'adoptopenjdk'
-
       - name: Build with Maven
-        run: mvn clean package -DskipTests
+        run: mvn clean package
 
   dockerize:
     runs-on: ubuntu-latest
@@ -44,3 +38,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/music-hub:latest .
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/music-hub:latest
