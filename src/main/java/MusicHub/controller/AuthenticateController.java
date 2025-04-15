@@ -5,13 +5,11 @@ import MusicHub.dto.AuthenticateDTO.IntrospectDTO;
 import MusicHub.dto.ResponseAPI;
 import MusicHub.dto.UserDTO.UserDTO;
 import MusicHub.service.interf.IAuthenticateService;
-import com.nimbusds.jose.JOSEException;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
-
-import java.text.ParseException;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/auth")
@@ -20,41 +18,44 @@ public class AuthenticateController {
     private final IAuthenticateService authenticateService;
 
     @PostMapping("/login")
-    public ResponseEntity<ResponseAPI<Void>> authenticate(@RequestBody AuthenticateDTO request) {
-        ResponseAPI<Void> response = authenticateService.authenticate(request, false);
-        return ResponseEntity.status(response.getCode()).body(response);
+    public Mono<ResponseEntity<ResponseAPI<Void>>> authenticate(@RequestBody Mono<AuthenticateDTO> requestMono) {
+        return requestMono.flatMap(request ->
+                authenticateService.authenticate(request, false)
+                        .map(response -> ResponseEntity.status(response.getCode()).body(response)));
     }
 
     @PostMapping("/introspect")
-    public ResponseEntity<ResponseAPI<Void>> introspect(@RequestBody IntrospectDTO request) throws ParseException, JOSEException {
-        ResponseAPI<Void> response = authenticateService.introspect(request);
-        return ResponseEntity.status(response.getCode()).body(response);
+    public Mono<ResponseEntity<ResponseAPI<Void>>> introspect(@RequestBody Mono<IntrospectDTO> requestMono) {
+        return requestMono.flatMap(request ->
+                authenticateService.introspect(request)
+                    .map(response -> ResponseEntity.status(response.getCode()).body(response)));
     }
 
     @GetMapping("/login-google")
-    public ResponseEntity<ResponseAPI<String>> googleLogin(HttpServletRequest request) {
-        ResponseAPI<String> response = authenticateService.generateAuthUrl(request, "login");
-        return ResponseEntity.status(response.getCode()).body(response);
+    public Mono<ResponseEntity<ResponseAPI<String>>> googleLogin(ServerHttpRequest request) {
+        return authenticateService.generateAuthUrl(request, "login")
+                .map(response -> ResponseEntity.status(response.getCode()).body(response));
     }
 
     @GetMapping("/callback-google")
-    public ResponseEntity<ResponseAPI<Void>> googleCallback(
+    public Mono<ResponseEntity<ResponseAPI<Void>>> googleCallback(
             @RequestParam String code,
             @RequestParam String state,
-            HttpServletRequest request) {
-        ResponseAPI<Void> response = authenticateService.getAccessToken(code, state);
-        return ResponseEntity.status(response.getCode()).body(response);
+            ServerHttpRequest request) {
+        return authenticateService.getAccessToken(code, state)
+                .map(response -> ResponseEntity.status(response.getCode()).body(response));
     }
 
     @PostMapping("/register")
-    ResponseEntity<ResponseAPI<Void>> registerUser(@RequestBody UserDTO request) {
-        ResponseAPI<Void> response = authenticateService.registerUser(request);
-        return ResponseEntity.status(response.getCode()).body(response);
+    public Mono<ResponseEntity<ResponseAPI<Void>>> registerUser(@RequestBody Mono<UserDTO> requestMono) {
+        return requestMono.flatMap(request ->
+                authenticateService.registerUser(request)
+                    .map(response -> ResponseEntity.status(response.getCode()).body(response)));
     }
 
     @GetMapping("/register-google")
-    ResponseEntity<ResponseAPI<String>> googleRegister(HttpServletRequest request) {
-        ResponseAPI<String> response = authenticateService.generateAuthUrl(request, "register");
-        return ResponseEntity.status(response.getCode()).body(response);
+    public Mono<ResponseEntity<ResponseAPI<String>>> googleRegister(ServerHttpRequest request) {
+        return authenticateService.generateAuthUrl(request, "register")
+                .map(response -> ResponseEntity.status(response.getCode()).body(response));
     }
 }

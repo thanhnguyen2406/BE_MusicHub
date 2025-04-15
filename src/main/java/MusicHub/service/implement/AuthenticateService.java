@@ -16,18 +16,17 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.util.LinkedMultiValueMap;
-
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -64,66 +63,193 @@ public class AuthenticateService implements IAuthenticateService {
     @Value("${spring.security.oauth2.client.provider.google.user-info-uri}")
     private String userInfoUri;
 
+    public Mono<ResponseAPI<Void>> authenticate(AuthenticateDTO request, Boolean isGoogleLogin) {
+        String sanitizedUsername = request.getEmail().trim();
+
+        if (!sanitizedUsername.endsWith("@gmail.com")) {
+            return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_DOMAIN));
+        }
+
+        return userRepository.findByEmail(sanitizedUsername)
+                .flatMap(user -> {
+                    if (!isGoogleLogin) {
+                        if (user.getIsGoogleAccount()) {
+                            return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_LOGIN));
+                        }
+
+                        return Mono.fromCallable(() -> {
+                            PasswordEncoder encoder = new BCryptPasswordEncoder(5);
+                            boolean authenticated = encoder.matches(request.getPassword(), user.getPassword());
+                            if (!authenticated) {
+                                throw new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_PASSWORD);
+                            }
+                            return user;
+                        }).subscribeOn(Schedulers.boundedElastic());
+                    }
+                    return Mono.just(user);
+                })
+                .map(user -> {
+                    String token = generateToken(user);
+
+                    return ResponseAPI.<Void>builder()
+                            .code(200)
+                            .message("Login successfully")
+                            .token(token)
+                            .expiration(new Date(Instant.now().plus(2, ChronoUnit.HOURS).toEpochMilli()))
+                            .build();
+                })
+                .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
+                .onErrorResume(AppException.class, e -> Mono.just(
+                        ResponseAPI.<Void>builder()
+                                .code(e.getErrorCode().getCode())
+                                .message(e.getErrorCode().getMessage())
+                                .build()))
+                .onErrorResume(e -> Mono.just(
+                        ResponseAPI.<Void>builder()
+                                .code(500)
+                                .message("Error Occurs During User Login: " + e.getMessage())
+                                .build()));
+    }
+
     @Override
-    public ResponseAPI<Void> authenticate(AuthenticateDTO request, Boolean isGoogleLogin) {
-        try{
-            String sanitizedUsername = request.getEmail().trim();
-            if (!sanitizedUsername.endsWith("@gmail.com")) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_DOMAIN);
-            }
+    public Mono<ResponseAPI<Void>> introspect(IntrospectDTO request){
+        try {
+            String token = request.getToken();
+            JWSVerifier verifier = new MACVerifier(signerKey.getBytes());
+            SignedJWT signedJWT = SignedJWT.parse(token);
 
-            User user = userRepository.findByEmail(sanitizedUsername)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-            if (!isGoogleLogin) {
-                if (user.getIsGoogleAccount()) {
-                    throw new AppException(ErrorCode.UNAUTHENTICATED_LOGIN);
-                }
-                PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(5);
-                boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
-                if (!authenticated) {
-                    throw new AppException(ErrorCode.UNAUTHENTICATED);
-                }
-            }
+            Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+            boolean verified = signedJWT.verify(verifier);
 
-            String token = generateToken(user);
+            String message = (verified && expirationTime.after(new Date())) ? "Token is valid" : "Token is invalid";
 
-            return ResponseAPI.<Void>builder()
+            return Mono.just(ResponseAPI.<Void>builder()
                     .code(200)
-                    .message("Login successfully")
-                    .token(token)
-                    .expiration(new Date(Instant.now().plus(2, ChronoUnit.HOURS).toEpochMilli()))
-                    .build();
-        } catch (AppException e) {
-            return ResponseAPI.<Void>builder()
-                    .code(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        } catch (Exception e) {
-            return ResponseAPI.<Void>builder()
+                    .message(message)
+                    .expiration(expirationTime)
+                    .build());
+        } catch (ParseException | JOSEException e) {
+            return Mono.just(ResponseAPI.<Void>builder()
                     .code(500)
-                    .message("Error Occurs During User Login: " + e.getMessage())
-                    .build();
+                    .message("Error while introspecting: " + e.getMessage())
+                    .build());
         }
     }
 
     @Override
-    public ResponseAPI<Void> introspect(IntrospectDTO request) throws ParseException, JOSEException {
-        String token = request.getToken();
-        JWSVerifier verifier = new MACVerifier(signerKey.getBytes());
-        SignedJWT signedJWT = SignedJWT.parse(token);
+    public Mono<ResponseAPI<String>> generateAuthUrl(ServerHttpRequest request, String state) {
+        String url =  authUrl + "?client_id=" + clientId + "&redirect_uri=" + redirectUri + "&response_type=code";
 
-        Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-        boolean verified = signedJWT.verify(verifier);
+        if (state.equals("login")) {
+            url += "&scope=email" + "&state=" + state;
+        } else {
+            url += "&scope=email+profile" + "&state=" + state;
+        }
 
-        String message = (verified && expirationTime.after(new Date())) ? "Token is valid" : "Token is invalid";
-
-        return ResponseAPI.<Void>builder()
+        return Mono.just(ResponseAPI.<String>builder()
                 .code(200)
-                .message(message)
-                .token(null)
-                .expiration(expirationTime)
-                .build();
+                .message("Url generated successfully")
+                .data(url)
+                .build());
     }
+
+    @Override
+    public Mono<ResponseAPI<Void>> registerUser(UserDTO request) {
+        String sanitizedUsername = request.getEmail().trim();
+
+        if (!sanitizedUsername.endsWith("@gmail.com")) {
+            return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_DOMAIN));
+        }
+
+        return userRepository.existsByEmail(request.getEmail())
+                .flatMap(existed -> {
+                    if (existed) {
+                        return Mono.error(new AppException(ErrorCode.USER_EXISTED));
+                    }
+                    User user = userMapper.toUser(request);
+                    user.setRole("USER");
+                    user.setIsGoogleAccount(false);
+                    PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(5);
+                    user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+                    return userRepository.save(user)
+                            .thenReturn(ResponseAPI.<Void>builder()
+                                    .code(200)
+                                    .message("User register successfully")
+                                    .build());
+                })
+                .onErrorResume(AppException.class, e -> Mono.just(
+                        ResponseAPI.<Void>builder()
+                                .code(e.getErrorCode().getCode())
+                                .message(e.getErrorCode().getMessage())
+                                .build()))
+                .onErrorResume(e -> Mono.just(
+                        ResponseAPI.<Void>builder()
+                                .code(500)
+                                .message("Error Occurs During User Login: " + e.getMessage())
+                                .build()));
+    }
+
+    @Override
+    public Mono<ResponseAPI<Void>> getAccessToken(String code, String state) {
+        return WebClient.builder()
+                .baseUrl(tokenUri)
+                .build()
+                .post()
+                .uri("")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .bodyValue("client_id=" + clientId
+                        + "&client_secret=" + clientSecret
+                        + "&code=" + code
+                        + "&grant_type=authorization_code"
+                        + "&redirect_uri=" + redirectUri)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    Object token = response != null ? response.get("access_token") : null;
+                    String accessToken = token instanceof String ? (String) token : null;
+
+                    if (accessToken == null) {
+                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_LOGIN));
+                    }
+
+                    return accessToken;
+                })
+                .flatMap(accessToken -> getUserInfo((String) accessToken, state));
+    }
+
+    public Mono<ResponseAPI<Void>> getUserInfo(String accessToken, String state) {
+        return WebClient.builder()
+                .baseUrl(userInfoUri)
+                .build()
+                .get()
+                .header("Authorization", "Bearer " + accessToken)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .flatMap(userInfo -> {
+                    String email = userInfo != null && userInfo.get("email") != null ? userInfo.get("email").toString() : "Unknown";
+                    String name = userInfo != null && userInfo.get("name") != null ? userInfo.get("name").toString() : "Unknown";
+
+                    if (state.equals("login")) {
+                        AuthenticateDTO authenticateDTO = new AuthenticateDTO();
+                        authenticateDTO.setEmail(email);
+                        return authenticate(authenticateDTO, true);
+                    } else if (state.equals("register")) {
+                        return userService.createPatient(email, name);
+                    } else {
+                        return Mono.just(ResponseAPI.<Void>builder()
+                                .code(200)
+                                .message("User info fetched successfully")
+                                .build());
+                    }
+                })
+                .onErrorResume(e -> Mono.just(
+                        ResponseAPI.<Void>builder()
+                                .code(500)
+                                .message("Error fetching user info: " + e.getMessage())
+                                .build()));
+    }
+
 
     private String generateToken(User user) {
         JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS256);
@@ -152,121 +278,5 @@ public class AuthenticateService implements IAuthenticateService {
 
     private String buildScope(User user){
         return "ROLE_" + user.getRole();
-    }
-
-    @Override
-    public ResponseAPI<Void> registerUser(UserDTO request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new AppException(ErrorCode.USER_EXISTED);
-        }
-        String sanitizedUsername = request.getEmail().trim();
-        if (!sanitizedUsername.endsWith("@gmail.com")) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_DOMAIN);
-        }
-
-        User user = userMapper.toUser(request);
-        user.setRole("PATIENT");
-        user.setIsGoogleAccount(false);
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(5);
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepository.save(user);
-
-        return ResponseAPI.<Void>builder()
-                .code(200)
-                .message("Patient register successfully")
-                .build();
-    }
-
-    @Override
-    public ResponseAPI<String> generateAuthUrl(HttpServletRequest request, String state) {
-        String url;
-
-        if (state.equals("login")) {
-            url = authUrl + "?client_id=" + clientId
-                    + "&redirect_uri=" + redirectUri
-                    + "&response_type=code"
-                    + "&scope=email"
-                    + "&state=" + state;
-        } else {
-            url = authUrl + "?client_id=" + clientId
-                    + "&redirect_uri=" + redirectUri
-                    + "&response_type=code"
-                    + "&scope=email+profile"
-                    + "&state=" + state;
-        }
-
-        return ResponseAPI.<String>builder()
-                .code(200)
-                .message("Url generated successful")
-                .data(url)
-                .build();
-    }
-
-    @Override
-    public ResponseAPI<Void> getAccessToken(String code, String state) {
-        RestTemplate restTemplate = new RestTemplate();
-        String tokenUrl = tokenUri;
-
-        MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
-        requestBody.add("client_id", clientId);
-        requestBody.add("client_secret", clientSecret);
-        requestBody.add("code", code);
-        requestBody.add("grant_type", "authorization_code");
-        requestBody.add("redirect_uri", redirectUri);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
-
-        ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, requestEntity, Map.class);
-
-        Object token = response.getBody() != null ? response.getBody().get("access_token") : null;
-        String accessToken = token instanceof String ? (String) token : null;
-
-        if (!response.getStatusCode().is2xxSuccessful() || accessToken == null) {
-            throw new AppException(ErrorCode.TOKEN_FETCHED_FAIL);
-        }
-
-        return getUserInfo(accessToken, state);
-    }
-
-    public ResponseAPI<Void> getUserInfo(String accessToken, String state) {
-        System.out.println(state);
-        RestTemplate restTemplate = new RestTemplate();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + accessToken);
-
-        HttpEntity<Void> userRequest = new HttpEntity<>(headers);
-
-        ResponseEntity<Map> userResponse = restTemplate.exchange(
-                userInfoUri,
-                HttpMethod.GET,
-                userRequest,
-                Map.class
-        );
-
-        Map userInfo = userResponse.getBody();
-
-        if (!userResponse.getStatusCode().is2xxSuccessful() || userInfo == null) {
-            throw new AppException(ErrorCode.USERINFO_FETCHED_FAIL);
-        }
-
-        String email = userInfo.get("email") != null ? userInfo.get("email").toString() : "Unknown";
-        String name = userInfo.get("name") != null ? userInfo.get("name").toString() : "Unknown";
-
-        if (state.equals("login")) {
-            AuthenticateDTO authenticateDTO = new AuthenticateDTO();
-            authenticateDTO.setEmail(email);
-            return authenticate(authenticateDTO, true);
-        } else if (state.equals("register")) {
-            return userService.createPatient(email, name);
-        } else {
-            return ResponseAPI.<Void>builder()
-                    .code(200)
-                    .message("User info fetched successfully")
-                    .build();
-        }
     }
 }

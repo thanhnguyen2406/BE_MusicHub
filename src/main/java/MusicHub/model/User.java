@@ -13,7 +13,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class User {
     @Id
-    long id;
+    String id;
 
     String email;
     String password;

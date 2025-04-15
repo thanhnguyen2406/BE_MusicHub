@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 
@@ -24,65 +25,66 @@ public class UserService implements IUserService {
     private final UserMapper userMapper;
 
     @Override
-    public ResponseAPI<UserDTO> getMyInfo() {
-        try {
-            String username = SecurityContextHolder.getContext().getAuthentication().getName();
-            Optional<User> user = userRepository.findByEmail(username);
-            if (user.isEmpty()) {
-                throw new AppException(ErrorCode.USER_NOT_FOUND);
-            }
-            UserDTO userDTO = UserDTO.builder()
-                    .email(user.get().getEmail())
-                    .name(user.get().getName())
-                    .build();
-            return ResponseAPI.<UserDTO>builder()
-                    .code(200)
-                    .data(userDTO)
-                    .message("My Info fetched successfully")
-                    .build();
-        } catch (AppException e) {
-            return ResponseAPI.<UserDTO>builder()
-                    .code(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        } catch (Exception e) {
-            return ResponseAPI.<UserDTO>builder()
-                    .code(500)
-                    .message("Error Occurs During Get User Info: " + e.getMessage())
-                    .build();
-        }
+    public Mono<ResponseAPI<UserDTO>> getMyInfo(String username) {
+        return userRepository.findByEmail(username)
+                .map(user -> {
+                    UserDTO userDTO = userMapper.toUserDTO(user);
+                    return ResponseAPI.<UserDTO>builder()
+                            .code(200)
+                            .data(userDTO)
+                            .message("My Info fetched successfully")
+                            .build();
+                })
+                .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
+                .onErrorResume(AppException.class, e -> Mono.just(
+                        ResponseAPI.<UserDTO>builder()
+                                .code(e.getErrorCode().getCode())
+                                .message(e.getErrorCode().getMessage())
+                                .build()
+                ))
+                .onErrorResume(e -> Mono.just(
+                        ResponseAPI.<UserDTO>builder()
+                                .code(500)
+                                .message("Error Occurs During Get User Info: " + e.getMessage())
+                                .build()
+                ));
     }
 
     @Override
-    public ResponseAPI<Void> createPatient(String email, String name) {
-        try {
-            if (!email.endsWith("@gmail.com")) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_DOMAIN);
-            }
-            if (userRepository.findByEmail(email).isPresent()) {
-                throw new AppException(ErrorCode.USER_EXISTED);
-            }
-            User user = User.builder()
-                    .email(email)
-                    .name(name)
-                    .role("PATIENT")
-                    .isGoogleAccount(true)
-                    .build();
-            userRepository.save(user);
-            return ResponseAPI.<Void>builder()
-                    .code(200)
-                    .message("Patient register successfully")
-                    .build();
-        } catch (AppException e) {
-            return ResponseAPI.<Void>builder()
-                    .code(e.getErrorCode().getCode())
-                    .message(e.getErrorCode().getMessage())
-                    .build();
-        } catch (Exception e) {
-            return ResponseAPI.<Void>builder()
-                    .code(500)
-                    .message("Error Occurs During Register Patient: " + e.getMessage())
-                    .build();
+    public Mono<ResponseAPI<Void>> createPatient(String email, String name) {
+        if (!email.endsWith("@gmail.com")) {
+            return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_DOMAIN));
         }
+
+        return userRepository.existsByEmail(email)
+                .flatMap(existed -> {
+                    if (existed) {
+                        return Mono.error(new AppException(ErrorCode.USER_EXISTED));
+                    }
+
+                    User user = User.builder()
+                            .email(email)
+                            .name(name)
+                            .role("USER")
+                            .isGoogleAccount(true)
+                            .build();
+
+                    return userRepository.save(user)
+                            .thenReturn(ResponseAPI.<Void>builder()
+                                    .code(200)
+                                    .message("User register successfully")
+                                    .build());
+                })
+                .onErrorResume(AppException.class, e ->
+                        Mono.just(ResponseAPI.<Void>builder()
+                                .code(e.getErrorCode().getCode())
+                                .message(e.getErrorCode().getMessage())
+                                .build())
+                )
+                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
+                        .code(500)
+                        .message("Error Occurs During Register User: " + e.getMessage())
+                        .build()));
     }
+
 }
