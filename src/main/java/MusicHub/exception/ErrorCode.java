@@ -8,7 +8,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public enum ErrorCode {
     //401: Unauthenticated errors
-    UNAUTHENTICATED(401, "Unauthenticated"),
     UNAUTHENTICATED_USERNAME_PASSWORD(401, "Please check username or password again"),
     UNAUTHENTICATED_USERNAME(401, "Please check your username again"),
     UNAUTHENTICATED_USERNAME_DOMAIN(401, "Please enter email ends with @gmail.com"),

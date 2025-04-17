@@ -5,22 +5,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import reactor.core.publisher.Mono;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(value = AppException.class)
-    ResponseEntity<ResponseAPI<Void>> handleAppException(AppException e) {
+    @ExceptionHandler(AppException.class)
+    public Mono<ResponseEntity<ResponseAPI<Void>>> handleAppException(AppException e) {
         ErrorCode errorCode = e.getErrorCode();
         ResponseAPI<Void> response = new ResponseAPI<>();
         response.setCode(errorCode.getCode());
         response.setMessage(errorCode.getMessage());
 
-        return ResponseEntity.badRequest().body(response);
+        return Mono.just(ResponseEntity.badRequest().body(response));
     }
 
-    @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    ResponseEntity<ResponseAPI<Void>> handleValidation(MethodArgumentNotValidException e) {
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public Mono<ResponseEntity<ResponseAPI<Void>>> handleValidation(MethodArgumentNotValidException e) {
         String enumKey = e.getFieldError().getDefaultMessage();
         ErrorCode error = ErrorCode.valueOf(enumKey);
 
@@ -28,6 +29,7 @@ public class GlobalExceptionHandler {
         response.setCode(error.getCode());
         response.setMessage(error.getMessage());
 
-        return ResponseEntity.badRequest().body(response);
+        return Mono.just(ResponseEntity.badRequest().body(response));
     }
 }
+
