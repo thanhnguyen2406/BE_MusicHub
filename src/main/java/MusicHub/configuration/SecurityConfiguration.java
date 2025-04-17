@@ -1,5 +1,8 @@
 package MusicHub.configuration;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,10 +25,11 @@ import javax.crypto.spec.SecretKeySpec;
 
 @Configuration
 @EnableWebFluxSecurity
+@RequiredArgsConstructor
+@FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class SecurityConfiguration {
-
-    @Value("${JWT_SIGNER_KEY}")
-    private String signerKey;
+    SecurityProperties security;
+    JwtProperties jwtProperties;
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -33,7 +37,7 @@ public class SecurityConfiguration {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> {})
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/auth/**").permitAll()
+                        .pathMatchers(security.getPermitPaths()).permitAll()
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -48,10 +52,10 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOrigin("http://localhost:5173");
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.setAllowCredentials(true);
+        config.setAllowedOrigins(security.getAllowedOrigins());
+        config.setAllowedHeaders(security.getAllowedHeaders());
+        config.setAllowedMethods(security.getAllowedMethods());
+        config.setAllowCredentials(security.isAllowCredentials());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -71,7 +75,7 @@ public class SecurityConfiguration {
 
     @Bean
     public ReactiveJwtDecoder jwtDecoder() {
-        SecretKeySpec keySpec = new SecretKeySpec(signerKey.getBytes(), "HmacSHA256");
+        SecretKeySpec keySpec = new SecretKeySpec(jwtProperties.getSignerKey()  .getBytes(), "HmacSHA256");
         return NimbusReactiveJwtDecoder
                 .withSecretKey(keySpec)
                 .macAlgorithm(MacAlgorithm.HS256)

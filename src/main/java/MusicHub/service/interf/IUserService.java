@@ -5,6 +5,6 @@ import MusicHub.dto.UserDTO.UserDTO;
 import reactor.core.publisher.Mono;
 
 public interface IUserService {
-    Mono<ResponseAPI<Void>> createPatient(String email, String name);
+    Mono<ResponseAPI<Void>> createUser(String email, String name);
     Mono<ResponseAPI<UserDTO>> getMyInfo(String email);
 }

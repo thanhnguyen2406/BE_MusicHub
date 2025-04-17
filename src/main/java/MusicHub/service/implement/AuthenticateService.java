@@ -1,5 +1,7 @@
 package MusicHub.service.implement;
 
+import MusicHub.configuration.JwtProperties;
+import MusicHub.configuration.OauthGoogleProperties;
 import MusicHub.dto.AuthenticateDTO.AuthenticateDTO;
 import MusicHub.dto.AuthenticateDTO.IntrospectDTO;
 import MusicHub.dto.ResponseAPI;
@@ -16,9 +18,10 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -37,31 +40,14 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthenticateService implements IAuthenticateService {
-    private final IUserService userService;
-    private final UserRepository userRepository;
-    private final UserMapper userMapper;
+    IUserService userService;
+    UserRepository userRepository;
+    UserMapper userMapper;
 
-    @Value("${JWT_SIGNER_KEY}")
-    private String signerKey;
-
-    @Value("${spring.security.oauth2.client.registration.google.client-id}")
-    private String clientId;
-
-    @Value("${spring.security.oauth2.client.registration.google.client-secret}")
-    private String clientSecret;
-
-    @Value("${spring.security.oauth2.client.provider.google.authorization-uri}")
-    private String authUrl;
-
-    @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
-    private String redirectUri;
-
-    @Value("${spring.security.oauth2.client.provider.google.token-uri}")
-    private String tokenUri;
-
-    @Value("${spring.security.oauth2.client.provider.google.user-info-uri}")
-    private String userInfoUri;
+    JwtProperties jwtProperties;
+    OauthGoogleProperties oauthGoogleProperties;
 
     public Mono<ResponseAPI<Void>> authenticate(AuthenticateDTO request, Boolean isGoogleLogin) {
         String sanitizedUsername = request.getEmail().trim();
@@ -115,7 +101,7 @@ public class AuthenticateService implements IAuthenticateService {
     public Mono<ResponseAPI<Void>> introspect(IntrospectDTO request){
         try {
             String token = request.getToken();
-            JWSVerifier verifier = new MACVerifier(signerKey.getBytes());
+            JWSVerifier verifier = new MACVerifier(jwtProperties.getSignerKey().getBytes());
             SignedJWT signedJWT = SignedJWT.parse(token);
 
             Date expirationTime = signedJWT.getJWTClaimsSet().getExpirationTime();
@@ -138,7 +124,10 @@ public class AuthenticateService implements IAuthenticateService {
 
     @Override
     public Mono<ResponseAPI<String>> generateAuthUrl(ServerHttpRequest request, String state) {
-        String url =  authUrl + "?client_id=" + clientId + "&redirect_uri=" + redirectUri + "&response_type=code";
+        String url =  oauthGoogleProperties.getProvider().getAuthorizationUri()
+                + "?client_id=" + oauthGoogleProperties.getRegistration().getClientId()
+                + "&redirect_uri=" + oauthGoogleProperties.getRegistration().getRedirectUri()
+                + "&response_type=code";
 
         if (state.equals("login")) {
             url += "&scope=email" + "&state=" + state;
@@ -193,16 +182,16 @@ public class AuthenticateService implements IAuthenticateService {
     @Override
     public Mono<ResponseAPI<Void>> getAccessToken(String code, String state) {
         return WebClient.builder()
-                .baseUrl(tokenUri)
+                .baseUrl(oauthGoogleProperties.getProvider().getTokenUri())
                 .build()
                 .post()
                 .uri("")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .bodyValue("client_id=" + clientId
-                        + "&client_secret=" + clientSecret
+                .bodyValue("client_id=" + oauthGoogleProperties.getRegistration().getClientId()
+                        + "&client_secret=" + oauthGoogleProperties.getRegistration().getClientSecret()
                         + "&code=" + code
                         + "&grant_type=authorization_code"
-                        + "&redirect_uri=" + redirectUri)
+                        + "&redirect_uri=" + oauthGoogleProperties.getRegistration().getRedirectUri())
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> {
@@ -220,7 +209,7 @@ public class AuthenticateService implements IAuthenticateService {
 
     public Mono<ResponseAPI<Void>> getUserInfo(String accessToken, String state) {
         return WebClient.builder()
-                .baseUrl(userInfoUri)
+                .baseUrl(oauthGoogleProperties.getProvider().getUserInfoUri())
                 .build()
                 .get()
                 .header("Authorization", "Bearer " + accessToken)
@@ -235,7 +224,7 @@ public class AuthenticateService implements IAuthenticateService {
                         authenticateDTO.setEmail(email);
                         return authenticate(authenticateDTO, true);
                     } else if (state.equals("register")) {
-                        return userService.createPatient(email, name);
+                        return userService.createUser(email, name);
                     } else {
                         return Mono.just(ResponseAPI.<Void>builder()
                                 .code(200)
@@ -258,7 +247,7 @@ public class AuthenticateService implements IAuthenticateService {
                 .subject(user.getEmail())
                 .issuer("MyApp")
                 .issueTime(new Date())
-                .expirationTime(new Date(Instant.now().plus(2, ChronoUnit.HOURS).toEpochMilli()))
+                .expirationTime(new Date(Instant.now().plusSeconds(jwtProperties.getExpiration()).toEpochMilli()))
                 .jwtID(UUID.randomUUID().toString())
                 .claim("scope", buildScope(user))
                 .build();
@@ -268,7 +257,7 @@ public class AuthenticateService implements IAuthenticateService {
         JWSObject jwsObject = new JWSObject(jwsHeader, payload);
 
         try {
-            jwsObject.sign(new MACSigner(signerKey.getBytes()));
+            jwsObject.sign(new MACSigner(jwtProperties.getSignerKey().getBytes()));
             return jwsObject.serialize();
         } catch (JOSEException e) {
             log.error("Cannot create token", e);

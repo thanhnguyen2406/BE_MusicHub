@@ -16,14 +16,26 @@ public class MusicHubApplication {
 			Dotenv dotenv = Dotenv.configure().load();
 
 			System.setProperty("SPRING_APPLICATION_NAME", dotenv.get("SPRING_APPLICATION_NAME", ""));
+			System.setProperty("SECURITY_PERMIT_PATHS", dotenv.get("SECURITY_PERMIT_PATHS", ""));
+
+			System.setProperty("CORS_ALLOWED_ORIGINS", dotenv.get("CORS_ALLOWED_ORIGINS", ""));
+			System.setProperty("CORS_ALLOWED_METHODS", dotenv.get("CORS_ALLOWED_METHODS", ""));
+			System.setProperty("CORS_ALLOWED_HEADERS", dotenv.get("CORS_ALLOWED_HEADERS", ""));
+			System.setProperty("CORS_ALLOW_CREDENTIALS", dotenv.get("CORS_ALLOW_CREDENTIALS", ""));
+
 			System.setProperty("SPRING_DATA_MONGODB_URI", dotenv.get("SPRING_DATA_MONGODB_URI", ""));
 			System.setProperty("SPRING_DATA_MONGODB_USERNAME", dotenv.get("SPRING_DATA_MONGODB_USERNAME", ""));
 			System.setProperty("SPRING_DATA_MONGODB_PASSWORD", dotenv.get("SPRING_DATA_MONGODB_PASSWORD", ""));
+
 			System.setProperty("SPRING_JPA_HIBERNATE_DDL_AUTO", dotenv.get("SPRING_JPA_HIBERNATE_DDL_AUTO", ""));
 			System.setProperty("SPRING_JPA_SHOW_SQL", dotenv.get("SPRING_JPA_SHOW_SQL", ""));
+
 			System.setProperty("SERVER_PORT", dotenv.get("SERVER_PORT", ""));
 			System.setProperty("SERVER_CONTEXT_PATH", dotenv.get("SERVER_CONTEXT_PATH", ""));
+
 			System.setProperty("JWT_SIGNER_KEY", dotenv.get("JWT_SIGNER_KEY", ""));
+			System.setProperty("JWT_EXPIRATION", dotenv.get("JWT_EXPIRATION", ""));
+
 			System.setProperty("SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID", dotenv.get("SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID", ""));
 			System.setProperty("SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET", dotenv.get("SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET", ""));
 			System.setProperty("SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI", dotenv.get("SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI", ""));
