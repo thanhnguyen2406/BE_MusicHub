@@ -51,7 +51,7 @@ public class UserService implements IUserService {
     }
 
     @Override
-    public Mono<ResponseAPI<Void>> createPatient(String email, String name) {
+    public Mono<ResponseAPI<Void>> createUser(String email, String name) {
         if (!email.endsWith("@gmail.com")) {
             return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_USERNAME_DOMAIN));
         }
