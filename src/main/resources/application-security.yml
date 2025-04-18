@@ -1,0 +1,11 @@
+jwt:
+  signerKey: ${JWT_SIGNER_KEY}
+  expiration: ${JWT_EXPIRATION}
+
+app:
+  security:
+    permit-paths: ${SECURITY_PERMIT_PATHS}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+    allowed-methods: ${CORS_ALLOWED_METHODS}
+    allowed-headers: ${CORS_ALLOWED_HEADERS}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS}
