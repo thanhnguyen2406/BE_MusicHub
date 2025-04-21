@@ -14,11 +14,13 @@ public enum ErrorCode {
 
     //400: Invalid encoded device
     ENCODED_DEVICE_INVALID(400, "Encoded device string is invalid"),
-
     //Google Access Token INVALID
     TOKEN_FETCHED_FAIL(400, "Fail to fetch access token"),
     USERINFO_FETCHED_FAIL(400, "Fail to fetch user info"),
-    UNAUTHENTICATED_LOGIN(401, "This mail must be logan through google service"),
+    UNAUTHENTICATED_LOGIN(400, "This mail must be logan through google service"),
+    //400: Invalid keycloak
+    PASSWORD_IS_EMPTY(400, "Password is empty"),
+    KEYCLOAK_FAIL(400, "Keycloak creation is failed"),
 
     //404: Resource not found errors
     USER_NOT_FOUND(404, "User not found"),

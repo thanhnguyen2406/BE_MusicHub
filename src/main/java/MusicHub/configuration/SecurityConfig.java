@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> {})
                 .authorizeExchange(exchanges -> exchanges
-//                        .pathMatchers(security.getPermitPaths()).permitAll()
+                        .pathMatchers(security.getPermitPaths()).permitAll()
                         .anyExchange().permitAll()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
@@ -69,24 +69,4 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", config);
         return source;
     }
-//
-//    @Bean
-//    public Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
-//        JwtGrantedAuthoritiesConverter converter = new JwtGrantedAuthoritiesConverter();
-//        converter.setAuthorityPrefix("");
-//
-//        JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
-//        jwtConverter.setJwtGrantedAuthoritiesConverter(converter);
-//
-//        return new ReactiveJwtAuthenticationConverterAdapter(jwtConverter);
-//    }
-//
-//    @Bean
-//    public ReactiveJwtDecoder jwtDecoder() {
-//        SecretKeySpec keySpec = new SecretKeySpec(jwtProperties.getSignerKey()  .getBytes(), "HmacSHA256");
-//        return NimbusReactiveJwtDecoder
-//                .withSecretKey(keySpec)
-//                .macAlgorithm(MacAlgorithm.HS256)
-//                .build();
-//    }
 }

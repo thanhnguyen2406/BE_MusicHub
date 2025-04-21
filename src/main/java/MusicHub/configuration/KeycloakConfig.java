@@ -14,7 +14,6 @@ public class KeycloakConfig {
 
     @Bean
     public Keycloak keycloak() {
-        System.out.println("Keycloak: " +  keycloak);
         return KeycloakBuilder.builder()
                 .serverUrl(keycloak.getDomain())
                 .realm(keycloak.getRealm())
