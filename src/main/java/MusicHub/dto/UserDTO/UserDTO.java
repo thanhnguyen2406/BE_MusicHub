@@ -12,12 +12,9 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserDTO {
-    @NotBlank(message = "Username can not be empty")
+    String username;
     String email;
-
-    @NotBlank(message = "Password can not be empty")
+    String firstName;
+    String lastName;
     String password;
-
-    @NotBlank(message = "Name can not be empty")
-    String name;
 }

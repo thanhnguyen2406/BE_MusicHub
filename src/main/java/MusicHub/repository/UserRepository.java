@@ -9,6 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends ReactiveMongoRepository<User, String> {
-    Mono<User> findByEmail(String email);
-    Mono<Boolean> existsByEmail(String email);
+//    Mono<User> findByEmail(String email);
+//    Mono<Boolean> existsByEmail(String email);
 }
