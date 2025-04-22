@@ -3,6 +3,8 @@ spring:
     include:
     - security
     - oauthGoogle
+    - jwt
+    - keycloak
   application:
     name: ${SPRING_APPLICATION_NAME}
   data:
