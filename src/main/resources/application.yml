@@ -1,4 +1,10 @@
 spring:
+  profiles:
+    include:
+    - security
+    - oauthGoogle
+    - jwt
+    - keycloak
   application:
     name: ${SPRING_APPLICATION_NAME}
   data:
@@ -10,24 +16,8 @@ spring:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
     show-sql: ${SPRING_JPA_SHOW_SQL}
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID}
-            client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET}
-            redirect-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI}
-        provider:
-          google:
-            authorization-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI}
-            token-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI}
-            user-info-uri: ${SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI}
 
 server:
   port: ${SERVER_PORT}
   servlet:
     context-path: ${SERVER_CONTEXT_PATH}
-
-jwt:
-  signerKey: ${JWT_SIGNER_KEY}

@@ -5,6 +5,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
+
 @Document(collection = "users")
 @Data
 @Builder
@@ -13,12 +15,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class User {
     @Id
-    long id;
+    String id;
 
-    String email;
-    String password;
-    String name;
-    String role;
-    Boolean isGoogleAccount;
+    String avatar;
+    String displayName;
+    LocalDateTime joinedAt;
 }
 

@@ -4,8 +4,17 @@ import lombok.AccessLevel;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
 @Data
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class IntrospectDTO {
-    String token;
+    private boolean active;
+    private String username;
+    private String   scope;
+    private String client_id;
+    private long exp;
+    private long iat;
+    private String sub;
+    private String aud;
+    private String iss;
 }
