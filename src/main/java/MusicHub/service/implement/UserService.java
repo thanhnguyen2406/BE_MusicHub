@@ -19,6 +19,7 @@ import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -27,7 +28,9 @@ import reactor.core.publisher.Mono;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -98,6 +101,14 @@ public class UserService implements IUserService {
                     dbUser.setId(userId);
                     dbUser.setDisplayName(userDTO.getUsername());
                     dbUser.setAvatar(null);
+
+                    RoleRepresentation userRole = keycloak.realm(keycloakProperties.getRealm())
+                            .clients().get(getClientUUID()).roles().get("musicHub_user").toRepresentation();
+
+                    usersResource.get(userId)
+                            .roles()
+                            .clientLevel(getClientUUID())
+                            .add(List.of(userRole));
 
                     return dbUser;
                 })
@@ -244,4 +255,13 @@ public class UserService implements IUserService {
         UsersResource usersResource = getUsersResource();
         return usersResource.get(userId);
     }
+
+    private String getClientUUID() {
+        return keycloak.realm(keycloakProperties.getRealm())
+                .clients()
+                .findByClientId(keycloakProperties.getClientId())
+                .get(0)
+                .getId();
+    }
+
 }

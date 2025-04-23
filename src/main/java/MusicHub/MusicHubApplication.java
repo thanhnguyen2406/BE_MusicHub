@@ -27,9 +27,6 @@ public class MusicHubApplication {
 			System.setProperty("SPRING_DATA_MONGODB_USERNAME", dotenv.get("SPRING_DATA_MONGODB_USERNAME", ""));
 			System.setProperty("SPRING_DATA_MONGODB_PASSWORD", dotenv.get("SPRING_DATA_MONGODB_PASSWORD", ""));
 
-			System.setProperty("SPRING_JPA_HIBERNATE_DDL_AUTO", dotenv.get("SPRING_JPA_HIBERNATE_DDL_AUTO", ""));
-			System.setProperty("SPRING_JPA_SHOW_SQL", dotenv.get("SPRING_JPA_SHOW_SQL", ""));
-
 			System.setProperty("SERVER_PORT", dotenv.get("SERVER_PORT", ""));
 			System.setProperty("SERVER_CONTEXT_PATH", dotenv.get("SERVER_CONTEXT_PATH", ""));
 
@@ -51,6 +48,10 @@ public class MusicHubApplication {
 			System.setProperty("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI", dotenv.get("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI", ""));
 			System.setProperty("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI", dotenv.get("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI", ""));
 			System.setProperty("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI", dotenv.get("SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI", ""));
+
+			System.setProperty("SERVER_RSOCKET_PORT", dotenv.get("SERVER_RSOCKET_PORT", ""));
+			System.setProperty("SERVER_RSOCKET_MAPPING_PATH", dotenv.get("SERVER_RSOCKET_MAPPING_PATH", ""));
+			System.setProperty("SERVER_RSOCKET_TRANSPORT", dotenv.get("SERVER_RSOCKET_TRANSPORT", ""));
 		}
 
 		SpringApplication.run(MusicHubApplication.class, args);
