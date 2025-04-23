@@ -17,8 +17,7 @@ public class User {
     @Id
     String id;
 
-    String avatar;
     String displayName;
-    LocalDateTime joinedAt;
+    String avatar;
 }
 

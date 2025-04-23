@@ -96,8 +96,7 @@ public class UserService implements IUserService {
 
                     User dbUser = new User();
                     dbUser.setId(userId);
-                    dbUser.setDisplayName(userDTO.getFirstName() + " " + userDTO.getLastName());
-                    dbUser.setJoinedAt(LocalDateTime.now());
+                    dbUser.setDisplayName(userDTO.getUsername());
                     dbUser.setAvatar(null);
 
                     return dbUser;
