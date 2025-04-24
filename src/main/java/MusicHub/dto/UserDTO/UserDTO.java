@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -17,4 +19,7 @@ public class UserDTO {
     String firstName;
     String lastName;
     String password;
+    LocalDateTime createdAt;
+    String avatar;
+    String displayName;
 }

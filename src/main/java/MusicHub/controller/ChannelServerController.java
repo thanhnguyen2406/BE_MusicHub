@@ -1,6 +1,6 @@
 package MusicHub.controller;
 
-import MusicHub.dto.ChannelDTO.ChannelDTO;
+import MusicHub.dto.RequestRsocket;
 import MusicHub.model.Channel;
 import MusicHub.service.interf.IChannelService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ public class ChannelServerController {
     private final IChannelService channelService;
 
     @MessageMapping("channel.create")
-    public Mono<Channel> createChannel(Mono<ChannelDTO> requestMono) {
-        return requestMono.flatMap(channelService::createChannelServer);
+    public Mono<Channel> createChannel(RequestRsocket requestRsocket) {
+        return channelService.createChannelServer(requestRsocket);
     }
 }

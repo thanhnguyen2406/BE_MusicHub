@@ -21,16 +21,12 @@ import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -43,14 +39,17 @@ public class UserService implements IUserService {
 
     @Override
     public Mono<ResponseAPI<UserDTO>> getUserById(String userId) {
-        return Mono.fromCallable(() ->
-                        getUsersResource().get(userId).toRepresentation())
+        return userRepository.findById(userId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
-                .map(userRepresentation -> ResponseAPI.<UserDTO>builder()
-                        .code(200)
-                        .data(userMapper.toUserDTO(userRepresentation))
-                        .message("User fetched successfully")
-                        .build())
+                .flatMap(existingUser -> {
+                    UserRepresentation userRepresentation = getUsersResource().get(userId).toRepresentation();
+                    UserDTO userDTO = userMapper.toUserDTO(userRepresentation, existingUser);
+                    return Mono.just(ResponseAPI.<UserDTO>builder()
+                            .code(200)
+                            .data(userDTO)
+                            .message("User fetched successfully")
+                            .build());
+                })
                 .onErrorResume(AppException.class, e -> Mono.just(
                         ResponseAPI.<UserDTO>builder()
                                 .code(e.getErrorCode().getCode())
@@ -101,6 +100,7 @@ public class UserService implements IUserService {
                     dbUser.setId(userId);
                     dbUser.setDisplayName(userDTO.getUsername());
                     dbUser.setAvatar(null);
+                    dbUser.setCreatedAt(LocalDateTime.now());
 
                     RoleRepresentation userRole = keycloak.realm(keycloakProperties.getRealm())
                             .clients().get(getClientUUID()).roles().get("musicHub_user").toRepresentation();

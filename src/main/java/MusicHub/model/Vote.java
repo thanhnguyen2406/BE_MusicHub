@@ -13,7 +13,7 @@ import java.util.Map;
 @Data
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Vote {
+public class Vote extends BaseEntity{
     @NotNull
     int upVote = 0;
 

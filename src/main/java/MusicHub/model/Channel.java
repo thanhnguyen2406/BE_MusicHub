@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Channel {
+public class Channel extends BaseEntity{
     @Id
     @JsonProperty("id")
     String id;
@@ -38,20 +39,16 @@ public class Channel {
     List<String> tagList;
 
     @NotNull
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Ho_Chi_Minh")
-    @JsonProperty("createdAt")
-    LocalDateTime createdAt;
-
-    @NotNull
     @JsonProperty("members")
     Map<String, LocalTime> members = new HashMap<>();
 
     @NotNull
     @JsonProperty("songs")
-    List<String> songs = List.of();
+    List<String> songs = new ArrayList<>();
 
     @JsonProperty("description")
     String description;
+
     @JsonProperty("password")
     String password;
 

@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class MoodLog {
+public class MoodLog extends BaseEntity{
     @Id
     String id;
 
@@ -25,8 +25,4 @@ public class MoodLog {
     String imageUrl;
 
     String moodTag;
-
-    @NotNull
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Ho_Chi_Minh")
-    LocalDateTime createdAt;
 }
