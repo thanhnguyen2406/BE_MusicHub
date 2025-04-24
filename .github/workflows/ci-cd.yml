@@ -6,62 +6,9 @@ on:
       - main
       - features/**
 
-env:
-  SPRING_APPLICATION_NAME: ${{ secrets.SPRING_APPLICATION_NAME }}
-
-  SECURITY_PERMIT_PATHS: ${{ secrets.SECURITY_PERMIT_PATHS }}
-  CORS_ALLOWED_ORIGINS: ${{ secrets.CORS_ALLOWED_ORIGINS }}
-  CORS_ALLOWED_METHODS: ${{ secrets.CORS_ALLOWED_METHODS }}
-  CORS_ALLOWED_HEADERS: ${{ secrets.CORS_ALLOWED_HEADERS }}
-  CORS_ALLOW_CREDENTIALS: ${{ secrets.CORS_ALLOW_CREDENTIALS }}
-
-  SPRING_DATA_MONGODB_URI: ${{ secrets.SPRING_DATA_MONGODB_URI }}
-  SPRING_DATA_MONGODB_USERNAME: ${{ secrets.SPRING_DATA_MONGODB_USERNAME }}
-  SPRING_DATA_MONGODB_PASSWORD: ${{ secrets.SPRING_DATA_MONGODB_PASSWORD }}
-
-  SERVER_PORT: ${{ secrets.SERVER_PORT }}
-  SERVER_CONTEXT_PATH: ${{ secrets.SERVER_CONTEXT_PATH }}
-
-  JWT_ISSUER_URI: ${{ secrets.JWT_ISSUER_URI }}
-  JWT_AUTH_CONVERTER_RESOURCE_ID: ${{ secrets.JWT_AUTH_CONVERTER_RESOURCE_ID }}
-  JWT_AUTH_CONVERTER_PRINCIPLE_ATTRIBUTE: ${{ secrets.JWT_AUTH_CONVERTER_PRINCIPLE_ATTRIBUTE }}
-  JWT_EXPIRATION: ${{ secrets.JWT_EXPIRATION }}
-
-  KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM }}
-  KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID }}
-  KEYCLOAK_DOMAIN: ${{ secrets.KEYCLOAK_DOMAIN }}
-  KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
-  KEYCLOAK_URLS_AUTH: ${{ secrets.KEYCLOAK_URLS_AUTH }}
-
-  SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID }}
-  SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET }}
-  SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI }}
-  SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_AUTHORIZATION_URI }}
-  SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_TOKEN_URI }}
-  SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GOOGLE_USER_INFO_URI }}
-
-  SERVER_RSOCKET_PORT: ${{ secrets.SERVER_RSOCKET_PORT }}
-  SERVER_RSOCKET_MAPPING_PATH: ${{ secrets.SERVER_RSOCKET_MAPPING_PATH }}
-  SERVER_RSOCKET_TRANSPORT: ${{ secrets.SERVER_RSOCKET_TRANSPORT }}
-
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    services:
-      keycloak:
-        image: quay.io/keycloak/keycloak:24.0.1
-        ports:
-          - 8081:8080
-        env:
-          KEYCLOAK_ADMIN: admin
-          KEYCLOAK_ADMIN_PASSWORD: admin
-        options: >-
-          --health-cmd "curl --fail http://localhost:8080/realms/master" 
-          --health-interval 10s 
-          --health-timeout 5s 
-          --health-retries 20
-        command: start-dev
 
     steps:
       - name: Checkout code
@@ -73,19 +20,28 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Start Keycloak in background
+        run: |
+          docker run -d --name keycloak -p 8081:8080 \
+            -e KEYCLOAK_ADMIN=admin \
+            -e KEYCLOAK_ADMIN_PASSWORD=admin \
+            quay.io/keycloak/keycloak:24.0.1 start-dev
+
       - name: Wait for Keycloak to be healthy
         run: |
-          echo "Waiting for Keycloak to start..."
+          echo "Waiting for Keycloak to be ready..."
           for i in {1..30}; do
-            curl -sSf http://localhost:8081/realms/master > /dev/null && break || sleep 5
+            if curl -sSf http://localhost:8081/realms/master > /dev/null; then
+              echo "Keycloak is up!"
+              break
+            fi
+            sleep 5
           done
 
       - name: Set up Keycloak realm and client
         run: |
-          echo "Downloading kcadm.sh"
           curl -Lo kcadm.sh https://raw.githubusercontent.com/keycloak/keycloak/main/kc.sh
           chmod +x kcadm.sh
-
           ./kcadm.sh config credentials --server http://localhost:8081 --realm master --user admin --password admin
           
           ./kcadm.sh create realms -s realm=musicHub -s enabled=true
