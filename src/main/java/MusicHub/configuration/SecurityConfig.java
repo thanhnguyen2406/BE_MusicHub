@@ -28,7 +28,7 @@ import reactor.core.publisher.Mono;
 public class SecurityConfig {
     SecurityProperties security;
     JwtAuthConverter jwtAuthConverter;
-    JwtProperties jwtProperties;
+    ResourceServerProperties resourceServerProperties;
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -54,7 +54,7 @@ public class SecurityConfig {
 
     @Bean
     public ReactiveJwtDecoder jwtDecoder() {
-        return ReactiveJwtDecoders.fromIssuerLocation(jwtProperties.getIssuerUri());
+        return ReactiveJwtDecoders.fromIssuerLocation(resourceServerProperties.getIssuer_uri());
     }
 
     @Bean

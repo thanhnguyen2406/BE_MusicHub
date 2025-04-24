@@ -1,6 +1,7 @@
 package MusicHub.mapper;
 
 import MusicHub.dto.UserDTO.UserDTO;
+import MusicHub.model.User;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +16,15 @@ public class UserMapper {
         return userRepresentation;
     }
 
-    public UserDTO toUserDTO(UserRepresentation userRepresentation) {
+    public UserDTO toUserDTO(UserRepresentation userRepresentation, User user) {
         return UserDTO.builder()
                 .username(userRepresentation.getUsername())
                 .email(userRepresentation.getEmail())
                 .firstName(userRepresentation.getFirstName())
                 .lastName(userRepresentation.getLastName())
+                .createdAt(user.getCreatedAt())
+                .avatar(user.getAvatar())
+                .displayName(user.getDisplayName())
                 .build();
     }
 }

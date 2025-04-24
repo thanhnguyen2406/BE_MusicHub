@@ -22,17 +22,16 @@ env:
   SERVER_PORT: ${{ secrets.SERVER_PORT }}
   SERVER_CONTEXT_PATH: ${{ secrets.SERVER_CONTEXT_PATH }}
 
-  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI }}
-  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${{ secrets.SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI }}
+  JWT_ISSUER_URI: ${{ secrets.JWT_ISSUER_URI }}
   JWT_AUTH_CONVERTER_RESOURCE_ID: ${{ secrets.JWT_AUTH_CONVERTER_RESOURCE_ID }}
   JWT_AUTH_CONVERTER_PRINCIPLE_ATTRIBUTE: ${{ secrets.JWT_AUTH_CONVERTER_PRINCIPLE_ATTRIBUTE }}
   JWT_EXPIRATION: ${{ secrets.JWT_EXPIRATION }}
 
-  KEYCLOAK_REALM: ${{ secrets.KEYCLOAK_REALM }}
-  KEYCLOAK_CLIENT_ID: ${{ secrets.KEYCLOAK_CLIENT_ID }}
-  KEYCLOAK_DOMAIN: ${{ secrets.KEYCLOAK_DOMAIN }}
-  KEYCLOAK_CLIENT_SECRET: ${{ secrets.KEYCLOAK_CLIENT_SECRET }}
-  KEYCLOAK_URLS_AUTH: ${{ secrets.KEYCLOAK_URLS_AUTH }}
+  KEYCLOAK_REALM: musicHub
+  KEYCLOAK_CLIENT_ID: musicHub-reactive
+  KEYCLOAK_CLIENT_SECRET: secret
+  KEYCLOAK_DOMAIN: http://localhost:8081
+  KEYCLOAK_URLS_AUTH: http://localhost:8081/realms/musicHub
 
   SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID }}
   SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET: ${{ secrets.SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET }}
@@ -58,6 +57,45 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Start Keycloak in background
+        run: |
+          docker run -d --name keycloak -p 8081:8080 \
+            -e KEYCLOAK_ADMIN=admin \
+            -e KEYCLOAK_ADMIN_PASSWORD=admin \
+            quay.io/keycloak/keycloak:24.0.1 start-dev
+
+      - name: Wait for Keycloak to be healthy
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          for i in {1..30}; do
+            if curl -sSf http://localhost:8081/realms/master > /dev/null; then
+              echo "Keycloak is up!"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Set up Keycloak realm and client
+        run: |
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+              --server http://localhost:8080 --realm master \
+              --user admin --password admin
+            
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh create realms \
+              -s realm=musicHub -s enabled=true
+            
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh create clients -r musicHub \
+              -s clientId=musicHub-reactive \
+              -s enabled=true \
+              -s secret=secret \
+              -s publicClient=false \
+              -s standardFlowEnabled=true \
+              -s directAccessGrantsEnabled=true \
+              -s 'redirectUris=["*"]' \
+              -s 'webOrigins=["*"]'
+            
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh create roles -r musicHub -s name=USER
 
       - name: Build with Maven
         run: mvn clean package

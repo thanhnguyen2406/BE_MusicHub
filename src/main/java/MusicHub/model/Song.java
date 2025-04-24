@@ -14,15 +14,12 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Song {
+public class Song extends BaseEntity{
     @Id
     String id;
 
     @NotNull
     String channelId;
-
-    @NotNull
-    String addedByUserId;
 
     @NotNull
     String title;

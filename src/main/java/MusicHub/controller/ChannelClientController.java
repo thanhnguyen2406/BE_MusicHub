@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+import java.security.Principal;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/channels")
@@ -17,7 +19,7 @@ public class ChannelClientController {
     private final IChannelService channelService;
 
     @PostMapping("/create")
-    public Mono<ResponseAPI<Void>> createChannel(@RequestBody ChannelDTO channelDTO) {
-        return channelService.createChannelClient(channelDTO);
+    public Mono<ResponseAPI<Void>> createChannel(@RequestBody ChannelDTO channelDTO, Principal principal) {
+        return channelService.createChannelClient(channelDTO, principal.getName());
     }
 }
