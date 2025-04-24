@@ -40,15 +40,24 @@ jobs:
 
       - name: Set up Keycloak realm and client
         run: |
-          curl -Lo kcadm.sh https://raw.githubusercontent.com/keycloak/keycloak/main/kc.sh
-          chmod +x kcadm.sh
-          ./kcadm.sh config credentials --server http://localhost:8081 --realm master --user admin --password admin
-          
-          ./kcadm.sh create realms -s realm=musicHub -s enabled=true
-          ./kcadm.sh create clients -r musicHub -s clientId=musicHub-reactive -s enabled=true -s secret=secret \
-            -s publicClient=false -s standardFlowEnabled=true -s directAccessGrantsEnabled=true \
-            -s 'redirectUris=["*"]' -s 'webOrigins=["*"]'
-          ./kcadm.sh create roles -r musicHub -s name=USER
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+              --server http://localhost:8080 --realm master \
+              --user admin --password admin
+            
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh create realms \
+              -s realm=musicHub -s enabled=true
+            
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh create clients -r musicHub \
+              -s clientId=musicHub-reactive \
+              -s enabled=true \
+              -s secret=secret \
+              -s publicClient=false \
+              -s standardFlowEnabled=true \
+              -s directAccessGrantsEnabled=true \
+              -s 'redirectUris=["*"]' \
+              -s 'webOrigins=["*"]'
+            
+            docker exec keycloak /opt/keycloak/bin/kcadm.sh create roles -r musicHub -s name=USER
 
       - name: Build with Maven
         run: mvn clean package
