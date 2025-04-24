@@ -28,7 +28,6 @@ import reactor.core.publisher.Mono;
 public class SecurityConfig {
     SecurityProperties security;
     JwtAuthConverter jwtAuthConverter;
-    JwtProperties jwtProperties;
     ResourceServerProperties resourceServerProperties;
 
     @Bean

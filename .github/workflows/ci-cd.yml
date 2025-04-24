@@ -48,6 +48,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    services:
+      keycloak:
+        image: quay.io/keycloak/keycloak:24.0.1
+        ports:
+          - 8081:8080
+        env:
+          KEYCLOAK_ADMIN: admin
+          KEYCLOAK_ADMIN_PASSWORD: admin
+        options: >-
+          --health-cmd "curl --fail http://localhost:8080/realms/master" 
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 20
+        command: start-dev
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -57,6 +72,27 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Wait for Keycloak to be healthy
+        run: |
+          echo "Waiting for Keycloak to start..."
+          for i in {1..30}; do
+            curl -sSf http://localhost:8081/realms/master > /dev/null && break || sleep 5
+          done
+
+      - name: Set up Keycloak realm and client
+        run: |
+          echo "Downloading kcadm.sh"
+          curl -Lo kcadm.sh https://raw.githubusercontent.com/keycloak/keycloak/main/kc.sh
+          chmod +x kcadm.sh
+
+          ./kcadm.sh config credentials --server http://localhost:8081 --realm master --user admin --password admin
+          
+          ./kcadm.sh create realms -s realm=musicHub -s enabled=true
+          ./kcadm.sh create clients -r musicHub -s clientId=musicHub-reactive -s enabled=true -s secret=secret \
+            -s publicClient=false -s standardFlowEnabled=true -s directAccessGrantsEnabled=true \
+            -s 'redirectUris=["*"]' -s 'webOrigins=["*"]'
+          ./kcadm.sh create roles -r musicHub -s name=USER
 
       - name: Build with Maven
         run: mvn clean package
