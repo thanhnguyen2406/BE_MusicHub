@@ -12,11 +12,11 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BaseEntity {
     @JsonProperty("createdAt")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Ho_Chi_Minh")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "UTC")
     LocalDateTime createdAt;
 
     @JsonProperty("updatedAt")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Ho_Chi_Minh")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "UTC")
     LocalDateTime updatedAt;
 
     @JsonProperty("createdBy")

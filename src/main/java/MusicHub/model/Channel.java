@@ -1,14 +1,12 @@
 package MusicHub.model;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,21 +34,43 @@ public class Channel extends BaseEntity{
 
     @NotNull
     @JsonProperty("tagList")
-    List<String> tagList;
+    @Builder.Default
+    List<String> tagList = new ArrayList<>();
 
     @NotNull
     @JsonProperty("members")
+    @Builder.Default
     Map<String, LocalTime> members = new HashMap<>();
 
     @NotNull
     @JsonProperty("songs")
-    List<String> songs = new ArrayList<>();
+    @DBRef(lazy = true)
+    @Builder.Default
+    List<Song> songs = new ArrayList<>();
 
     @JsonProperty("description")
     String description;
 
     @JsonProperty("password")
     String password;
+    
+    @JsonProperty("isLocked")
+    @Builder.Default
+    Boolean isLocked = false;
+    
+    @JsonProperty("maxUsers")
+    Integer maxUsers;
+    
+    @JsonProperty("allowOthersToAddSongs")
+    @Builder.Default
+    Boolean allowOthersToAddSongs = false;
+    
+    @JsonProperty("allowOthersToControlPlayback")
+    @Builder.Default
+    Boolean allowOthersToControlPlayback = false;
+    
+    @DBRef
+    User owner;
 
     /* For enhancement
     @Field("votes")
