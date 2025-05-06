@@ -23,14 +23,14 @@ public class UserController {
                 .map(response -> ResponseEntity.status(response.getCode()).body(response));
     }
 
-    @PostMapping("/register")
+    @PostMapping
     public Mono<ResponseEntity<ResponseAPI<Void>>> createUser(@RequestBody  Mono<UserDTO> requestMono) {
         return requestMono.flatMap(request ->
                 userService.createUser(request)
                         .map(response -> ResponseEntity.status(response.getCode()).body(response)));
     }
 
-    @DeleteMapping("/delete/{userId}")
+    @DeleteMapping("/{userId}")
     public Mono<ResponseEntity<ResponseAPI<Void>>> deleteUserById(@PathVariable String userId) {
         return userService.deleteUserById(userId)
                 .map(response -> ResponseEntity.status(response.getCode()).body(response));

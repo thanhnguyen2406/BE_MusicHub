@@ -16,7 +16,7 @@ public interface IChannelService {
 
     //Client
     Mono<ResponseAPI<Void>> createChannelClient(ChannelDTO channelDTO, String userId);
-    Mono<ResponseAPI<Void>> updateChannelClient(ChannelDTO channelDTO, String userId);
+    Mono<ResponseAPI<Void>> updateChannelClient(String channelId, ChannelDTO channelDTO, String userId);
     Mono<ResponseAPI<Void>> deleteChannelClient(String channelId, String userId);
     Mono<ResponseAPI<Void>> joinChannelByIdClient(String channelId, String userId);
     Mono<ResponseAPI<Void>> joinChannelByUrlClient(String url, String userId);

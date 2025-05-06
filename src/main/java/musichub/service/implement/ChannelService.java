@@ -131,7 +131,8 @@ public class ChannelService implements IChannelService {
     }
 
     @Override
-    public Mono<ResponseAPI<Void>> updateChannelClient(ChannelDTO channelDTO, String userId) {
+    public Mono<ResponseAPI<Void>> updateChannelClient(String channelId, ChannelDTO channelDTO, String userId) {
+        channelDTO.setId(channelId);
         RequestRsocket requestRsocket = new RequestRsocket();
         requestRsocket.setPayload("channelDTO", channelDTO);
         requestRsocket.setPayload("userId", userId);
