@@ -1,6 +1,5 @@
 package musichub.controller;
 
-import musichub.dto.ChannelDTO.ChannelDTO;
 import musichub.dto.RequestRsocket;
 import musichub.model.Channel;
 import musichub.service.interf.IChannelService;
