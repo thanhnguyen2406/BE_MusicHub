@@ -6,7 +6,6 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -64,7 +63,7 @@ public class Channel extends BaseEntity{
     
     @JsonProperty("allowOthersToAddSongs")
     @Builder.Default
-    Boolean allowOthersToAddSongs = false;
+    Boolean allowOthersToManageSongs = false;
     
     @JsonProperty("allowOthersToControlPlayback")
     @Builder.Default

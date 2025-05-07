@@ -29,8 +29,8 @@ public class ChannelDTO {
     String password;
     @JsonProperty("maxUsers")
     Integer maxUsers;
-    @JsonProperty("allowOthersToAddSongs")
-    Boolean allowOthersToAddSongs;
+    @JsonProperty("allowOthersToManageSongs")
+    Boolean allowOthersToManageSongs;
     @JsonProperty("allowOthersToControlPlayback")
     Boolean allowOthersToControlPlayback;
 }

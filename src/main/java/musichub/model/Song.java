@@ -41,15 +41,9 @@ public class Song extends BaseEntity {
     @NotNull
     Integer duration;
 
-    @NotNull
-    Status status;
+    @Builder.Default
+    Status status = Status.WAITING;
 
     @Builder.Default
-    List<String> votes = new ArrayList<>();
-    
-    @Builder.Default
-    Integer totalUpVotes = 0;
-    
-    @Builder.Default
-    Integer totalDownVotes = 0;
+    Vote vote = new Vote();
 }

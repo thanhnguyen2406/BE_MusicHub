@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -32,9 +33,11 @@ public class ChannelService implements IChannelService {
     @Override
     public Mono<Channel> createChannelServer(RequestRsocket requestRsocket) {
         return Mono.fromCallable(() -> {
+                    String userId = requestRsocket.getPayloadAs("userId", String.class);
                     Channel newChannel = channelMapper.toChannel(requestRsocket.getPayloadAs("channelDTO", ChannelDTO.class));
                     newChannel.setCreatedAt(LocalDateTime.now());
-                    newChannel.setAddedBy(requestRsocket.getPayloadAs("userId", String.class));
+                    newChannel.setAddedBy(userId);
+                    newChannel.setMembers(Map.of(userId, LocalTime.now()));
                     return newChannel;
                 })
                 .flatMap(channelRepository::save);
@@ -56,7 +59,7 @@ public class ChannelService implements IChannelService {
                     channel.setPassword(channelDTO.getPassword());
                     channel.setIsLocked(channelDTO.getPassword() != null && !channelDTO.getPassword().isEmpty());
                     channel.setMaxUsers(channelDTO.getMaxUsers());
-                    channel.setAllowOthersToAddSongs(channelDTO.getAllowOthersToAddSongs());
+                    channel.setAllowOthersToManageSongs(channelDTO.getAllowOthersToManageSongs());
                     channel.setAllowOthersToControlPlayback(channelDTO.getAllowOthersToControlPlayback());
                     channel.setUpdatedAt(LocalDateTime.now());
                     return channelRepository.save(channel);

@@ -15,7 +15,7 @@ public class ChannelMapper {
                 .password(channelDTO.getPassword())
                 .isLocked(channelDTO.getPassword() != null && !channelDTO.getPassword().isEmpty())
                 .maxUsers(channelDTO.getMaxUsers())
-                .allowOthersToAddSongs(channelDTO.getAllowOthersToAddSongs())
+                .allowOthersToManageSongs(channelDTO.getAllowOthersToManageSongs())
                 .allowOthersToControlPlayback(channelDTO.getAllowOthersToControlPlayback())
                 .build();
     }
