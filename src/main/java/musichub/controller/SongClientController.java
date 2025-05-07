@@ -1,7 +1,6 @@
 package musichub.controller;
 
 import lombok.RequiredArgsConstructor;
-import musichub.dto.ChannelDTO.ChannelDTO;
 import musichub.dto.ResponseAPI;
 import musichub.dto.SongDTO.SongDTO;
 import musichub.dto.SongDTO.VoteSongDTO;

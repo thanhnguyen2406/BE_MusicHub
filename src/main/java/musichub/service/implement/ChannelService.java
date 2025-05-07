@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,24 +33,22 @@ public class ChannelService implements IChannelService {
 
     @Override
     public Mono<Channel> createChannelServer(RequestRsocket requestRsocket) {
-        return Mono.fromCallable(() -> {
-                    String userId = requestRsocket.getPayloadAs("userId", String.class);
-                    Channel newChannel = channelMapper.toChannel(requestRsocket.getPayloadAs("channelDTO", ChannelDTO.class));
-                    newChannel.setCreatedAt(LocalDateTime.now());
-                    newChannel.setAddedBy(userId);
-                    newChannel.setMembers(Map.of(userId, LocalTime.now()));
-                    return newChannel;
-                })
+        String userId = requestRsocket.getPayloadAs("userId", String.class);
+        ChannelDTO channelDTO = requestRsocket.getPayloadAs("channelDTO", ChannelDTO.class);
+
+        return Mono.fromCallable(() -> channelMapper.toChannel(channelDTO, userId))
                 .flatMap(channelRepository::save);
     }
 
     @Override
     public Mono<Channel> updateChannelServer(RequestRsocket requestRsocket) {
+        String userId = requestRsocket.getPayloadAs("userId", String.class);
         ChannelDTO channelDTO = requestRsocket.getPayloadAs("channelDTO", ChannelDTO.class);
+
         return channelRepository.findById(channelDTO.getId())
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
-                    if (!Objects.equals(channel.getAddedBy(), requestRsocket.getPayloadAs("userId", String.class))) {
+                    if (!Objects.equals(channel.getAddedBy(), userId)) {
                         return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
                     }
                     channel.setName(channelDTO.getName());
@@ -68,10 +67,13 @@ public class ChannelService implements IChannelService {
 
     @Override
     public Mono<Void> deleteChannelServer(RequestRsocket requestRsocket) {
-        return channelRepository.findById(requestRsocket.getPayloadAs("channelId", String.class))
+        String userId = requestRsocket.getPayloadAs("userId", String.class);
+        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
+
+        return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
-                    if (!Objects.equals(channel.getAddedBy(), requestRsocket.getPayloadAs("userId", String.class))) {
+                    if (!Objects.equals(channel.getAddedBy(), userId)) {
                         return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
                     }
                     return channelRepository.delete(channel);
@@ -80,10 +82,12 @@ public class ChannelService implements IChannelService {
 
     @Override
     public Mono<Channel> joinChannelByIdServer(RequestRsocket requestRsocket) {
-        return channelRepository.findById(requestRsocket.getPayloadAs("channelId", String.class))
+        String userId = requestRsocket.getPayloadAs("userId", String.class);
+        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
+
+        return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
-                    String userId = requestRsocket.getPayloadAs("userId", String.class);
                     if (channel.getMembers().size() >= channel.getMaxUsers()) {
                         return Mono.error(new AppException(ErrorCode.CHANNEL_IS_FULL));
                     }
@@ -97,10 +101,12 @@ public class ChannelService implements IChannelService {
 
     @Override
     public Mono<Channel> joinChannelByUrlServer(RequestRsocket requestRsocket) {
-        return channelRepository.findByUrl(requestRsocket.getPayloadAs("url", String.class))
+        String userId = requestRsocket.getPayloadAs("userId", String.class);
+        String url = requestRsocket.getPayloadAs("url", String.class);
+
+        return channelRepository.findByUrl(url)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
-                    String userId = requestRsocket.getPayloadAs("userId", String.class);
                     if (channel.getMembers().size() >= channel.getMaxUsers()) {
                         return Mono.error(new AppException(ErrorCode.CHANNEL_IS_FULL));
                     }

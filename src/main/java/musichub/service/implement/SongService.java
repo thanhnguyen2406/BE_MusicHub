@@ -49,10 +49,7 @@ public class SongService implements ISongService {
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
                     if (channel.getAddedBy().equals(userId) || channel.getAllowOthersToManageSongs()) {
-                        Song song = songMapper.toSong(songDTO);
-                        song.setChannelId(channelId);
-                        song.setAddedBy(userId);
-                        song.setCreatedAt(LocalDateTime.now());
+                        Song song = songMapper.toSong(songDTO, channelId, userId);
 
                         return songRepository.save(song)
                                 .flatMap(savedSong -> {
