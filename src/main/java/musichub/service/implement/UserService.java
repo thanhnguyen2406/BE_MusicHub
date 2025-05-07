@@ -80,8 +80,6 @@ public class UserService implements IUserService {
                     }
 
                     UserRepresentation user = userMapper.toUserRepresentation(userDTO);
-                    user.setEnabled(true);
-                    user.setEmailVerified(true);
 
                     CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
                     credentialRepresentation.setType(CredentialRepresentation.PASSWORD);

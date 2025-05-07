@@ -1,20 +1,17 @@
 package musichub.model;
 
+import lombok.experimental.SuperBuilder;
 import musichub.enums.Status;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import java.util.ArrayList;
-import java.util.List;
 
 @Document(collection = "songs")
 @Data
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Song extends BaseEntity {
     @Id

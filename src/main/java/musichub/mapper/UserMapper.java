@@ -12,6 +12,8 @@ public class UserMapper {
         userRepresentation.setEmail(userDTO.getEmail());
         userRepresentation.setFirstName(userDTO.getFirstName());
         userRepresentation.setLastName(userDTO.getLastName());
+        userRepresentation.setEnabled(true);
+        userRepresentation.setEmailVerified(true);
         return userRepresentation;
     }
 
