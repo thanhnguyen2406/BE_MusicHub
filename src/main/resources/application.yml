@@ -5,6 +5,7 @@ spring:
     - oauthGoogle
     - jwt
     - keycloak
+    - rsocket
   application:
     name: ${SPRING_APPLICATION_NAME}
   data:
@@ -12,10 +13,6 @@ spring:
       uri: ${SPRING_DATA_MONGODB_URI}
       username: ${SPRING_DATA_MONGODB_USERNAME}
       password: ${SPRING_DATA_MONGODB_PASSWORD}
-  jpa:
-    hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
-    show-sql: ${SPRING_JPA_SHOW_SQL}
 
 server:
   port: ${SERVER_PORT}

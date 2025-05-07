@@ -1,6 +1,10 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI}
 jwt:
-  issuer-uri: ${JWT_ISSUER_URI}
-  jwk-set-uri: ${JWT_JWK_SET_URI}
   auth:
     converter:
       resource-id: ${JWT_AUTH_CONVERTER_RESOURCE_ID}
