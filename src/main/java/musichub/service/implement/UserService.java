@@ -81,12 +81,6 @@ public class UserService implements IUserService {
 
                     UserRepresentation user = userMapper.toUserRepresentation(userDTO);
 
-                    CredentialRepresentation credentialRepresentation = new CredentialRepresentation();
-                    credentialRepresentation.setType(CredentialRepresentation.PASSWORD);
-                    credentialRepresentation.setValue(userDTO.getPassword());
-                    credentialRepresentation.setTemporary(false);
-                    user.setCredentials(List.of(credentialRepresentation));
-
                     Response response = usersResource.create(user);
 
                     if (response.getStatus() != 201) {
@@ -96,7 +90,7 @@ public class UserService implements IUserService {
                     String path = location.getPath();
                     String userId = path.substring(path.lastIndexOf("/") + 1);
 
-                    User dbUser = buildDbUser(userId, userDTO.getDisplayName());
+                    User dbUser = userMapper.toUser(userId, userDTO);
                     assignUserRole(userId);
                     
                     return dbUser;
@@ -139,6 +133,41 @@ public class UserService implements IUserService {
                         ResponseAPI.<Void>builder()
                                 .code(500)
                                 .message("Error Occurs During Deleting User: " + e.getMessage())
+                                .build()));
+    }
+
+    @Override
+    public Mono<ResponseAPI<Void>> updateUserById(UserDTO request, String userId) {
+        String id = request.getId();
+        return userRepository.findById(id)
+                .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
+                .flatMap(dbUser -> {
+                    UserResource userResource = getUsersResource().get(userId);
+                    UserRepresentation userRepresentation = userResource.toRepresentation();
+                    if (userRepresentation == null) {
+                        return Mono.error(new AppException(ErrorCode.USER_NOT_FOUND));
+                    }
+                    if (!userId.equals(id)) {
+                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_ACTION));
+                    }
+                    updateUser(userRepresentation, dbUser, request);
+                    userResource.update(userRepresentation);
+
+                    return userRepository.save(dbUser)
+                            .thenReturn(ResponseAPI.<Void>builder()
+                                    .code(200)
+                                    .message("User updated successfully")
+                                    .build());
+                })
+                .onErrorResume(AppException.class, e -> Mono.just(
+                        ResponseAPI.<Void>builder()
+                                .code(e.getErrorCode().getCode())
+                                .message(e.getErrorCode().getMessage())
+                                .build()))
+                .onErrorResume(e -> Mono.just(
+                        ResponseAPI.<Void>builder()
+                                .code(500)
+                                .message("Error Occurs During Updating User: " + e.getMessage())
                                 .build()));
     }
 
@@ -269,12 +298,12 @@ public class UserService implements IUserService {
                 .add(List.of(userRole));
     }
 
-    private User buildDbUser(String userId, String username) {
-        User dbUser = new User();
-        dbUser.setId(userId);
-        dbUser.setDisplayName(username);
-        dbUser.setAvatar(null);
-        dbUser.setCreatedAt(LocalDateTime.now());
-        return dbUser;
+    private void updateUser(UserRepresentation userRepresentation, User dbUser, UserDTO userDTO) {
+        userRepresentation.setFirstName(userDTO.getFirstName());
+        userRepresentation.setLastName(userDTO.getLastName());
+
+        dbUser.setUpdatedAt(LocalDateTime.now());
+        dbUser.setDisplayName(userDTO.getDisplayName());
+        dbUser.setAvatar(userDTO.getAvatar());
     }
 }

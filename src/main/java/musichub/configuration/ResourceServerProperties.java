@@ -9,5 +9,4 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "spring.security.oauth2.resourceserver.jwt")
 public class ResourceServerProperties {
     private String issuer_uri;
-    private String set_uri;
 }

@@ -6,19 +6,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "jwt")
+@ConfigurationProperties(prefix = "jwt.auth.converter")
 public class JwtProperties {
-    private Auth auth;
-    private int expiration;
-
-    @Data
-    public static class Auth {
-        private Converter converter;
-
-        @Data
-        public static class Converter {
-            private String resourceId;
-            private String principleAttribute;
-        }
-    }
+    private String resourceId;
+    private String principleAttribute;
 }

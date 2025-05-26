@@ -14,6 +14,7 @@ public enum ErrorCode {
     UNAUTHENTICATED_CHANNEL_OWNER(401, "You are not the owner of this channel"),
     UNAUTHENTICATED_CHANNEL_ADDER(401, "Channel's owner is not allowing you to add song"),
     UNAUTHENTICATED_CHANNEL_MEMBER(401, "You are not a member of this channel"),
+    UNAUTHENTICATED_ACTION(401, "You don't have permission to do this action"),
 
     //400: Invalid encoded device
     //Google Access Token INVALID

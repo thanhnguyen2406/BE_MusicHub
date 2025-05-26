@@ -1,7 +1,9 @@
 package musichub.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.rsocket.frame.decoder.PayloadDecoder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.rsocket.server.RSocketServerCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.codec.json.Jackson2JsonDecoder;
@@ -21,14 +23,23 @@ public class ClientRsocketConfig {
     private final ObjectMapper objectMapper;
 
     @Bean
-    public RSocketRequester getRSocketRequester() {
-        RSocketRequester.Builder builder = RSocketRequester.builder();
+    public RSocketServerCustomizer rSocketServerCustomizer() {
+        return server -> server
+                .payloadDecoder(PayloadDecoder.ZERO_COPY)
+                .fragment(1024 * 1024);
+    }
 
+    @Bean
+    public RSocketRequester rSocketRequester(RSocketRequester.Builder builder) {
         RSocketStrategies rSocketStrategies = RSocketStrategies.builder()
                 .encoders(encoders -> encoders.add(new Jackson2JsonEncoder(objectMapper)))
                 .decoders(decoders -> decoders.add(new Jackson2JsonDecoder(objectMapper)))
+                .metadataExtractorRegistry(registry -> registry.metadataToExtract(
+                        MimeTypeUtils.parseMimeType("message/x.rsocket.routing.v0"),
+                        String.class,
+                        "route"
+                ))
                 .build();
-
         return builder
                 .rsocketStrategies(rSocketStrategies)
                 .rsocketConnector(connector ->
@@ -37,4 +48,5 @@ public class ClientRsocketConfig {
                 .dataMimeType(MimeTypeUtils.APPLICATION_JSON)
                 .websocket(URI.create("ws://localhost:" + rsocket.getPort() + rsocket.getMappingPath()));
     }
+
 }
