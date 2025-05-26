@@ -1,6 +1,6 @@
 package musichub.service.implement;
 
-import musichub.configuration.KeycloakProperties;
+import musichub.configuration.security.KeycloakProperties;
 import musichub.dto.ResponseAPI;
 import musichub.dto.UserDTO.ResetPasswordDTO;
 import musichub.dto.UserDTO.UserDTO;

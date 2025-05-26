@@ -1,6 +1,6 @@
 package musichub.service.implement;
 
-import musichub.configuration.KeycloakProperties;
+import musichub.configuration.security.KeycloakProperties;
 import musichub.dto.AuthenticateDTO.AuthenticateDTO;
 import musichub.dto.AuthenticateDTO.IntrospectDTO;
 import musichub.dto.AuthenticateDTO.TokenResponseDTO;

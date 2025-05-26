@@ -61,7 +61,8 @@ public class ChannelServerController {
 
     @MessageMapping("test")
     public Mono<Map<String, String>> test() {
-        System.out.println("📥 Received request to route: test");
+        System.out.println("Received request to route: test");
+
         return Mono.just(Map.of("data", "test"));
     }
 }

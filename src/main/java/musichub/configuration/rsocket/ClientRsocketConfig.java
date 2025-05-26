@@ -1,4 +1,4 @@
-package musichub.configuration;
+package musichub.configuration.rsocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.rsocket.frame.decoder.PayloadDecoder;

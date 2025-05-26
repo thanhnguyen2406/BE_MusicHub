@@ -2,7 +2,6 @@ spring:
   profiles:
     include:
     - security
-    - oauthGoogle
     - jwt
     - keycloak
     - rsocket
