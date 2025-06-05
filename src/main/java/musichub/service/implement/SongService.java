@@ -48,18 +48,18 @@ public class SongService implements ISongService {
         return channelRepository.findById(requestRsocket.getPayloadAs("channelId", String.class))
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
-                    if (channel.getAddedBy().equals(userId) || channel.getAllowOthersToManageSongs()) {
+                    if (!channel.getAddedBy().equals(userId) && !channel.getAllowOthersToManageSongs()) {
+                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
+                    }
                         Song song = songMapper.toSong(songDTO, channelId, userId);
 
                         return songRepository.save(song)
                                 .flatMap(savedSong -> {
                                     channel.getSongs().add(savedSong.getId());
                                     return sortChannelSongs(channel)
+                                            .then(channelRepository.save(channel))
                                             .thenReturn(savedSong);
                                 });
-                    } else {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
-                    }
                 });
     }
 
@@ -72,11 +72,21 @@ public class SongService implements ISongService {
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
-                    if (channel.getAddedBy().equals(userId) || channel.getAllowOthersToManageSongs()) {
-                        return songRepository.deleteById(songId);
-                    } else {
+                    if (!channel.getAddedBy().equals(userId) && !channel.getAllowOthersToManageSongs()) {
                         return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
                     }
+                    return songRepository.findById(songId)
+                            .switchIfEmpty(Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND)))
+                            .flatMap(song -> {
+                                if (!channel.getSongs().contains(songId)) {
+                                    return Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND));
+                                }
+                                channel.getSongs().remove(songId);
+                                return songRepository.delete(song)
+                                        .then(channelRepository.save(channel))
+                                        .flatMap(this::sortChannelSongs)
+                                        .then();
+                            });
                 });
     }
 

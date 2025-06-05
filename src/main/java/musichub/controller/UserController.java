@@ -36,6 +36,13 @@ public class UserController {
                 .map(response -> ResponseEntity.status(response.getCode()).body(response));
     }
 
+    @PutMapping
+    public Mono<ResponseEntity<ResponseAPI<Void>>> updateUserById(@RequestBody Mono<UserDTO> requestMono, Principal principal) {
+        return requestMono.flatMap(request ->
+                userService.updateUserById(request, principal.getName())
+                        .map(response -> ResponseEntity.status(response.getCode()).body(response)));
+    }
+
     @PutMapping("/{userId}/send-verify-email")
     public Mono<ResponseEntity<ResponseAPI<Void>>> sendVerificationEmail(@PathVariable String userId) {
         return userService.emailVerification(userId)

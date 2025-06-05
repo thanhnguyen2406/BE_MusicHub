@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -46,7 +47,6 @@ public class Channel extends BaseEntity{
     Map<String, LocalTime> members = new HashMap<>();
 
     @NotNull
-    @JsonProperty("songs")
     @Builder.Default
     List<String> songs = new ArrayList<>();
 
@@ -63,16 +63,15 @@ public class Channel extends BaseEntity{
     @JsonProperty("maxUsers")
     Integer maxUsers;
     
-    @JsonProperty("allowOthersToAddSongs")
+    @JsonProperty("allowOthersToManageSongs")
     @Builder.Default
     Boolean allowOthersToManageSongs = false;
     
     @JsonProperty("allowOthersToControlPlayback")
     @Builder.Default
     Boolean allowOthersToControlPlayback = false;
-    
-    /*@DBRef
-    User owner;*/
+
+    User owner;
 
     /* For enhancement
     @Field("votes")
