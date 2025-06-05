@@ -13,9 +13,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -60,14 +59,16 @@ public class UserMapper {
                 .build();
     }
 
-    public Mono<List<MemberInfoDTO>> toMembersMap(Map<String, LocalTime> members, String userId) {
-        return Flux.fromIterable(members.keySet())
+    public Mono<List<MemberInfoDTO>> toMembersList(Set<String> members, String userId) {
+        return Flux.fromIterable(members)
                 .flatMap(memberId ->
                         userRepository.findById(memberId)
-                                .map(user -> new MemberInfoDTO(
-                                        user.getDisplayName(),
-                                        user.getAvatar(),
-                                        memberId.equals(userId) ? ChannelRole.OWNER : ChannelRole.MEMBER))
+                                .map(user -> MemberInfoDTO.builder()
+                                        .userId(memberId)
+                                        .displayName(user.getDisplayName())
+                                        .avatarUrl(user.getAvatar())
+                                        .role(memberId.equals(userId) ? ChannelRole.OWNER : ChannelRole.MEMBER)
+                                        .build())
                 )
                 .collectSortedList((a, b) -> {
                     if (a.getRole() == ChannelRole.OWNER) return -1;

@@ -19,6 +19,7 @@ import java.util.Map;
 public class ChannelInfoDTO {
     String id;
     String name;
+    String ownerId;
     String url;
     List<String> tagList;
     String description;

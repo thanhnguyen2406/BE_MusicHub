@@ -48,5 +48,4 @@ public class ClientRsocketConfig {
                 .dataMimeType(MimeTypeUtils.APPLICATION_JSON)
                 .websocket(URI.create("ws://localhost:" + rsocket.getPort() + rsocket.getMappingPath()));
     }
-
 }

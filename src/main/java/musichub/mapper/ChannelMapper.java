@@ -65,7 +65,7 @@ public class ChannelMapper {
                 .flatMap(songMapper::toSongDTO)
                 .collectList();
 
-        Mono<List<MemberInfoDTO>> membersMono = userMapper.toMembersMap(channel.getMembers(), channel.getOwner().getId());
+        Mono<List<MemberInfoDTO>> membersMono = userMapper.toMembersList(channel.getMembers().keySet(), channel.getOwner().getId());
 
         return Mono.zip(songDTOListMono, membersMono)
                 .map(tuple -> {
@@ -75,6 +75,7 @@ public class ChannelMapper {
                     return ChannelInfoDTO.builder()
                             .id(channel.getId())
                             .name(channel.getName())
+                            .ownerId(channel.getOwner().getId())
                             .url(channel.getUrl())
                             .tagList(channel.getTagList())
                             .description(channel.getDescription())
