@@ -1,4 +1,4 @@
-package musichub.service.interf;
+package musichub.service;
 
 import musichub.dto.RequestRsocket;
 import musichub.dto.ResponseAPI;
@@ -7,7 +7,7 @@ import musichub.dto.SongDTO.VoteSongDTO;
 import musichub.model.Song;
 import reactor.core.publisher.Mono;
 
-public interface ISongService {
+public interface SongService {
     //Server
     Mono<Song> addSongServer(RequestRsocket requestRsocket);
     Mono<Void> deleteSongServer(RequestRsocket requestRsocket);

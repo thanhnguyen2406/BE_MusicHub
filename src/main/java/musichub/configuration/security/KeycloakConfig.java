@@ -1,4 +1,4 @@
-package musichub.configuration;
+package musichub.configuration.security;
 
 import lombok.RequiredArgsConstructor;
 import org.keycloak.OAuth2Constants;

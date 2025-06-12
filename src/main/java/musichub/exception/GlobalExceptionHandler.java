@@ -20,6 +20,15 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity.badRequest().body(response));
     }
 
+    @ExceptionHandler(AppException.class)
+    public Mono<ResponseEntity<ResponseAPI<Void>>> handleThrowableException(Throwable e) {
+        ResponseAPI<Void> response = new ResponseAPI<>();
+        response.setCode(500);
+        response.setMessage("Internal Server Error: " + e.getMessage());
+
+        return Mono.just(ResponseEntity.badRequest().body(response));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Mono<ResponseEntity<ResponseAPI<Void>>> handleValidation(MethodArgumentNotValidException e) {
         String enumKey = e.getFieldError().getDefaultMessage();

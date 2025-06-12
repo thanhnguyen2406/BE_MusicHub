@@ -4,7 +4,7 @@ import musichub.dto.AuthenticateDTO.AuthenticateDTO;
 import musichub.dto.AuthenticateDTO.IntrospectDTO;
 import musichub.dto.AuthenticateDTO.TokenResponseDTO;
 import musichub.dto.ResponseAPI;
-import musichub.service.interf.IAuthenticateService;
+import musichub.service.AuthenticateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthenticateController {
-    private final IAuthenticateService authenticateService;
+    private final AuthenticateService authenticateService;
 
     @PostMapping("/login")
     public Mono<ResponseEntity<ResponseAPI<TokenResponseDTO>>> authenticate(@RequestBody Mono<AuthenticateDTO> requestMono) {

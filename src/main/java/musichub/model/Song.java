@@ -11,6 +11,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "songs")
 @Data
 @SuperBuilder
+@AllArgsConstructor
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Song extends BaseEntity {

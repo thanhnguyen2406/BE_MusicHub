@@ -13,9 +13,10 @@ import java.time.LocalDateTime;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserDTO {
+    String id;
     String email;
     String firstName;
-    String lastName;
+    String lastName;    
     String password;
     LocalDateTime createdAt;
     String avatar;
