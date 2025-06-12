@@ -39,8 +39,8 @@ public class UserServiceImpl implements UserService {
     UserRepository userRepository;
     UserMapper userMapper;
 
-    public static final String USER_ROLE = "musicHub_user";
-    public static final int HTTP_CREATED = 201;
+    private static final String USER_ROLE = "musicHub_user";
+    private static final int HTTP_CREATED = 201;
 
     @Override
     public Mono<ResponseAPI<UserDTO>> getUserById(String userId) {
@@ -82,7 +82,7 @@ public class UserServiceImpl implements UserService {
         UserRepresentation user = userMapper.toUserRepresentation(dto);
 
         Response response = usersResource.create(user);
-        AssertUtil.isTrue(response.getStatus() != 201, ErrorCode.KEYCLOAK_FAIL);
+        AssertUtil.isTrue(response.getStatus() != HTTP_CREATED, ErrorCode.KEYCLOAK_FAIL);
 
         URI location = response.getLocation();
         String path = location.getPath();

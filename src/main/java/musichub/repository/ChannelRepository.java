@@ -8,8 +8,9 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 @Repository
-public interface ChannelRepository extends ReactiveMongoRepository<Channel, String> {
+public interface ChannelRepository extends ReactiveMongoRepository<Channel, String>, ChannelRepositoryCustom {
     Mono<Channel> findByUrl(String url);
+
     @Query("{ 'members.?0' : { $exists: true } }")
     Mono<Channel> findByMemberId(String userId);
 }

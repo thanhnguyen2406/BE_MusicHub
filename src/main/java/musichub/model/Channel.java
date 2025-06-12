@@ -7,8 +7,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,7 +74,25 @@ public class Channel extends BaseEntity{
 
     User owner;
 
-    /* For enhancement
-    @Field("votes")
-    Vote votes;*/
+    public void addMember(String userId) {
+        this.members.put(userId, LocalTime.now());
+        this.setUpdatedAt(LocalDateTime.now());
+    }
+
+    public void removeMember(String userId) {
+        this.members.remove(userId);
+        this.setUpdatedAt(LocalDateTime.now());
+    }
+
+    public boolean isContainMember(String userId) {
+        return this.members.containsKey(userId);
+    }
+
+    public String getOwnerId() {
+        return this.owner.getId();
+    }
+
+    public boolean isOwner(String userId) {
+        return this.owner.getId().equals(userId);
+    }
 }

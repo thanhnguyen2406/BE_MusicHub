@@ -51,6 +51,22 @@ public class ChannelClientController {
         return channelService.leaveChannelByIdClient(channelId, principal.getName());
     }
 
+    @PostMapping("/{channelId}/members/{memberId}/kick")
+    public Mono<ResponseAPI<Void>> kickMember(
+            @PathVariable String channelId,
+            @PathVariable String memberId,
+            Principal principal) {
+        return channelService.kickMember(channelId, memberId, principal.getName());
+    }
+
+    @PostMapping("/{channelId}/transfer-ownership")
+    public Mono<ResponseAPI<Void>> transferOwnership(
+            @PathVariable String channelId,
+            @RequestParam String newOwnerId,
+            Principal principal) {
+        return channelService.transferOwnership(channelId, newOwnerId, principal.getName());
+    }
+
     @GetMapping()
     public Mono<ResponseAPI<PageResponse<ChannelJoinPageDTO>>> getChannels(
             @RequestParam(value = "page", defaultValue = "0") int page,
@@ -74,21 +90,5 @@ public class ChannelClientController {
             @PathVariable String channelId,
             @RequestParam(name = "search", required = false) String displayNameKeyword) {
         return channelService.searchMemberByDisplayName(channelId, displayNameKeyword);
-    }
-
-    @PostMapping("/{channelId}/members/{memberId}/kick")
-    public Mono<ResponseAPI<Void>> kickMember(
-            @PathVariable String channelId,
-            @PathVariable String memberId,
-            Principal principal) {
-        return channelService.kickMember(channelId, memberId, principal.getName());
-    }
-
-    @PostMapping("/{channelId}/transfer-ownership")
-    public Mono<ResponseAPI<Void>> transferOwnership(
-            @PathVariable String channelId,
-            @RequestParam String newOwnerId,
-            Principal principal) {
-        return channelService.transferOwnership(channelId, newOwnerId, principal.getName());
     }
 }

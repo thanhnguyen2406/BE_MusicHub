@@ -1,7 +1,8 @@
 package musichub.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import musichub.common.ChannelPermissionUtil;
+import musichub.common.ResponseUtil;
+import musichub.controller.ChannelServerController;
 import musichub.dto.ChannelDTO.ChannelDTO;
 import musichub.dto.ChannelDTO.ChannelInfoDTO;
 import musichub.dto.ChannelDTO.ChannelJoinPageDTO;
@@ -27,10 +28,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -42,12 +40,25 @@ public class ChannelServiceImpl implements ChannelService {
     UserMapper userMapper;
     RSocketRequester rSocketRequester;
 
-    //SERVER SERVICE
+    public static final String CHANNEL_ID = "channelId";
+    private static final String CHANNEL_DTO = "channelDTO";
+    public static final String OWNER_ID = "ownerId";
+    private static final String NEW_OWNER_ID = "newOwnerId";
+    private static final String OLD_OWNER_ID = "oldOwnerId";
+    private static final String USER_ID = "userId";
+    private static final String MEMBER_ID = "memberId";
+    private static final String URL = "url";
+    private static final String PAGE = "page";
+    private static final String SIZE = "size";
+    private static final String DISPLAY_NAME_KEYWORD = "displayNameKeyword";
 
+    //#region Server Service
+
+    //#region Channel CRUD
     @Override
     public Mono<Channel> createChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs("ownerId", String.class);
-        ChannelDTO channelDTO = requestRsocket.getPayloadAs("channelDTO", ChannelDTO.class);
+        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        ChannelDTO channelDTO = requestRsocket.getPayloadAs(CHANNEL_DTO, ChannelDTO.class);
 
         return userRepository.findById(ownerId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
@@ -57,108 +68,146 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public Mono<Channel> updateChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs("ownerId", String.class);
-        ChannelDTO channelDTO = requestRsocket.getPayloadAs("channelDTO", ChannelDTO.class);
+        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        ChannelDTO channelDTO = requestRsocket.getPayloadAs(CHANNEL_DTO, ChannelDTO.class);
 
         return channelRepository.findById(channelDTO.getId())
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel -> {
-                    if (!Objects.equals(channel.getAddedBy(), ownerId)) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
-                    }
-                    channel.setName(channelDTO.getName());
-                    channel.setUrl(channelDTO.getUrl());
-                    channel.setTagList(channelDTO.getTagList());
-                    channel.setDescription(channelDTO.getDescription());
-                    channel.setPassword(channelDTO.getPassword());
-                    channel.setIsLocked(channelDTO.getPassword() != null && !channelDTO.getPassword().isEmpty());
-                    channel.setMaxUsers(channelDTO.getMaxUsers());
-                    channel.setAllowOthersToManageSongs(channelDTO.getAllowOthersToManageSongs());
-                    channel.setAllowOthersToControlPlayback(channelDTO.getAllowOthersToControlPlayback());
-                    channel.setUpdatedAt(LocalDateTime.now());
-                    return channelRepository.save(channel);
+                    updateChannel(channel, channelDTO);
+
+                    return ChannelPermissionUtil
+                            .requireMember(channel, ownerId)
+                            .then(channelRepository.save(channel));
                 });
+    }
+
+    private void updateChannel (Channel channel, ChannelDTO channelDTO) {
+        channel.setName(channelDTO.getName());
+        channel.setUrl(channelDTO.getUrl());
+        channel.setTagList(channelDTO.getTagList());
+        channel.setDescription(channelDTO.getDescription());
+        channel.setPassword(channelDTO.getPassword());
+        channel.setIsLocked(channelDTO.getPassword() != null && !channelDTO.getPassword().isEmpty());
+        channel.setMaxUsers(channelDTO.getMaxUsers());
+        channel.setAllowOthersToManageSongs(channelDTO.getAllowOthersToManageSongs());
+        channel.setAllowOthersToControlPlayback(channelDTO.getAllowOthersToControlPlayback());
+        channel.setUpdatedAt(LocalDateTime.now());
     }
 
     @Override
     public Mono<Void> deleteChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs("ownerId", String.class);
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
+        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
 
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (!Objects.equals(channel.getAddedBy(), ownerId)) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
-                    }
-                    return channelRepository.delete(channel);
-                });
+                .flatMap(channel ->
+                        ChannelPermissionUtil
+                                .requireOwner(channel, ownerId)
+                                .then(channelRepository.delete(channel)));
     }
+    //#endregion
 
+    //#region Member actions
     @Override
     public Mono<Channel> joinChannelByIdServer(RequestRsocket requestRsocket) {
-        String userId = requestRsocket.getPayloadAs("userId", String.class);
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
+        String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
 
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (channel.getMembers().size() >= channel.getMaxUsers()) {
-                        return Mono.error(new AppException(ErrorCode.CHANNEL_IS_FULL));
-                    }
-                    if (channel.getMembers().containsKey(userId)) {
-                        return Mono.error(new AppException(ErrorCode.USER_ALREADY_IN_CHANNEL));
-                    }
-                    channel.getMembers().put(userId, LocalTime.now());
-                    channel.setUpdatedAt(LocalDateTime.now());
-                    return channelRepository.save(channel);
-                });
+                .flatMap(channel -> validateAndJoin(channel, userId));
     }
 
     @Override
     public Mono<Channel> joinChannelByUrlServer(RequestRsocket requestRsocket) {
-        String userId = requestRsocket.getPayloadAs("userId", String.class);
-        String url = requestRsocket.getPayloadAs("url", String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
+        String url = requestRsocket.getPayloadAs(URL, String.class);
 
         return channelRepository.findByUrl(url)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (channel.getMembers().size() >= channel.getMaxUsers()) {
-                        return Mono.error(new AppException(ErrorCode.CHANNEL_IS_FULL));
-                    }
-                    if (channel.getMembers().containsKey(userId)) {
-                        return Mono.error(new AppException(ErrorCode.USER_ALREADY_IN_CHANNEL));
-                    }
-                    channel.getMembers().put(userId, LocalTime.now());
-                    channel.setUpdatedAt(LocalDateTime.now());
+                .flatMap(channel -> validateAndJoin(channel, userId));
+    }
+
+    private Mono<Channel> validateAndJoin(Channel channel, String userId) {
+        return ChannelPermissionUtil
+                .requireChannelNotFull(channel)
+                .then(ChannelPermissionUtil.requireNotMember(channel, userId))
+                .then(Mono.defer(() -> {
+                    channel.addMember(userId);
                     return channelRepository.save(channel);
-                });
+                }));
     }
 
     @Override
     public Mono<Channel> leaveChannelByIdServer(RequestRsocket requestRsocket) {
-        String userId = requestRsocket.getPayloadAs("userId", String.class);
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
+        String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
 
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (!channel.getMembers().containsKey(userId)) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_ACTION));
-                    }
-                    channel.getMembers().remove(userId);
-                    channel.setUpdatedAt(LocalDateTime.now());
-                    return channelRepository.save(channel);
-                });
+                .flatMap(channel ->
+                    ChannelPermissionUtil
+                            .requireMember(channel, userId)
+                            .then(Mono.defer(() -> {
+                                channel.removeMember(userId);
+                                return channelRepository.save(channel);
+                            }))
+                );
     }
 
     @Override
+    public Mono<Channel> kickMemberServer(RequestRsocket requestRsocket) {
+        String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
+        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        String memberId = requestRsocket.getPayloadAs(MEMBER_ID, String.class);
+
+        return channelRepository.findById(channelId)
+                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
+                .flatMap(channel ->
+                        ChannelPermissionUtil
+                                .requireOwner(channel, ownerId)
+                                .then(ChannelPermissionUtil.requireMember(channel, memberId))
+                                .then(ChannelPermissionUtil.requireNotKickingOwner(channel, memberId))
+                                .then(Mono.defer(() -> {
+                                    channel.removeMember(memberId);
+                                    return channelRepository.save(channel);
+                                }))
+                );
+    }
+
+    @Override
+    public Mono<Channel> transferOwnershipServer(RequestRsocket requestRsocket) {
+        String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
+        String newOwnerId = requestRsocket.getPayloadAs(NEW_OWNER_ID, String.class);
+        String oldOwnerId = requestRsocket.getPayloadAs(OLD_OWNER_ID, String.class);
+
+        return channelRepository.findById(channelId)
+                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
+                .flatMap(channel ->
+                        ChannelPermissionUtil
+                                .requireOwner(channel, oldOwnerId)
+                                .then(ChannelPermissionUtil.requireMember(channel, newOwnerId))
+                                .then(Mono.defer(() ->
+                                        userRepository.findById(newOwnerId)
+                                                .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
+                                                .flatMap(newOwner -> {
+                                                    channel.setOwner(newOwner);
+                                                    channel.setUpdatedAt(LocalDateTime.now());
+                                                    return channelRepository.save(channel);
+                                                })
+                                )));
+    }
+    //#endregion
+
+    //#region GET methods
+    @Override
     public Mono<PageResponse<ChannelJoinPageDTO>> getChannelsServer(RequestRsocket requestRsocket) {
-        int page = requestRsocket.getPayloadAs("page", Integer.class);
-        int size = requestRsocket.getPayloadAs("size", Integer.class);
-        Mono<List<ChannelJoinPageDTO>> data = channelRepository.findAll()
-                .skip((long) page * size)
-                .take(size)
+        int page = requestRsocket.getPayloadAs(PAGE, Integer.class);
+        int size = requestRsocket.getPayloadAs(SIZE, Integer.class);
+
+        Mono<List<ChannelJoinPageDTO>> data = channelRepository.findAllWithPage(page, size)
                 .map(channelMapper::toChannelJoinPageDTO)
                 .collectList();
 
@@ -175,7 +224,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public Mono<String> getMyChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs("ownerId", String.class);
+        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
 
         return userRepository.findById(ownerId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
@@ -188,326 +237,238 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public Mono<ChannelInfoDTO> getChannelByIdServer(RequestRsocket requestRsocket) {
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
-        String userId = requestRsocket.getPayloadAs("userId", String.class);
+        String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
+
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (!channel.getMembers().containsKey(userId)) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_ACTION));
-                    }
-                    return channelMapper.toChannelInfoDTO(channel);
-                });
+                .flatMap(channel ->
+                        ChannelPermissionUtil
+                                .requireMember(channel, userId)
+                                .then(channelMapper.toChannelInfoDTO(channel))
+                );
     }
 
     @Override
     public Flux<MemberInfoDTO> searchMemberByDisplayName(RequestRsocket requestRsocket) {
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
-        String displayNameKeyword = requestRsocket.getPayloadAs("displayNameKeyword", String.class);
+        String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
+        String displayNameKeyword = requestRsocket.getPayloadAs(DISPLAY_NAME_KEYWORD, String.class);
 
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMapMany(channel -> {
-                    Set<String> memberIds = channel.getMembers().keySet();
-                    String ownerId = channel.getOwner().getId();
-
-                    return userMapper.toMembersList(memberIds, ownerId)
-                            .flatMapMany(Flux::fromIterable)
-                            .filter(member -> {
-                                if (displayNameKeyword == null || displayNameKeyword.trim().isEmpty()) {
-                                    return true;
-                                }
-                                return member.getDisplayName() != null &&
-                                        member.getDisplayName().toLowerCase().contains(displayNameKeyword.toLowerCase());
-                            });
-                });
+                .flatMapMany(channel -> mapMembersWithFilter(channel, displayNameKeyword));
     }
 
-    @Override
-    public Mono<Channel> kickMemberServer(RequestRsocket requestRsocket) {
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
-        String ownerId = requestRsocket.getPayloadAs("ownerId", String.class);
-        String memberId = requestRsocket.getPayloadAs("memberId", String.class);
-        return channelRepository.findById(channelId)
-                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (!Objects.equals(channel.getAddedBy(), ownerId)) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
-                    }
-                    if (ownerId.equals(memberId)) {
-                        return Mono.error(new AppException(ErrorCode.CANNOT_KICK_OWNER));
-                    }
-                    if (!channel.getMembers().containsKey(memberId)) {
-                        return Mono.error(new AppException(ErrorCode.USER_NOT_IN_CHANNEL));
-                    }
-                    channel.getMembers().remove(memberId);
-                    channel.setUpdatedAt(LocalDateTime.now());
-                    return channelRepository.save(channel);
-                });
+    private Flux<MemberInfoDTO> mapMembersWithFilter(Channel channel, String keyword) {
+        Set<String> memberIds = channel.getMembers().keySet();
+        String ownerId = channel.getOwnerId();
+
+        return userMapper.toMembersList(memberIds, ownerId)
+                .flatMapMany(Flux::fromIterable)
+                .filter(member -> isDisplayNameMatch(member, keyword));
     }
 
-    @Override
-    public Mono<Channel> transferOwnershipServer(RequestRsocket requestRsocket) {
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
-        String newOwnerId = requestRsocket.getPayloadAs("newOwnerId", String.class);
-        String oldOwnerId = requestRsocket.getPayloadAs("oldOwnerId", String.class);
-        return channelRepository.findById(channelId)
-                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    String currentOwnerId = channel.getOwner().getId();
-                    if (!currentOwnerId.equals(oldOwnerId)) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
-                    }
-                    if (!channel.getMembers().containsKey(newOwnerId)) {
-                        return Mono.error(new AppException(ErrorCode.USER_NOT_IN_CHANNEL));
-                    }
-                    channel.setUpdatedAt(LocalDateTime.now());
-                    return userRepository.findById(newOwnerId)
-                            .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
-                            .flatMap(newOwner -> {
-                                channel.setOwner(newOwner);
-                                return channelRepository.save(channel);
-                            });
-                });
+    private boolean isDisplayNameMatch(MemberInfoDTO member, String keyword) {
+        return keyword.isBlank() ||
+                (member.getDisplayName() != null &&
+                        member.getDisplayName().toLowerCase().contains(keyword));
     }
+    //#endregion
+
+    //#endregion
 
 
-    //CLIENT SERVICE
+    //#region Client Service
 
+    //#region Channel CRUD
     @Override
     public Mono<ResponseAPI<Void>> createChannelClient(ChannelDTO channelDTO, String ownerId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelDTO", channelDTO);
-        requestRsocket.setPayload("ownerId", ownerId);
+        requestRsocket.setPayload(CHANNEL_DTO, channelDTO);
+        requestRsocket.setPayload(OWNER_ID, ownerId);
+
         return rSocketRequester
-                .route("channel.create")
+                .route(ChannelServerController.CREATE)
                 .data(requestRsocket)
                 .retrieveMono(Channel.class)
-                .map(channel -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Channel created successfully")
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to create channel: " + e.getMessage())
-                        .build()));
+                .map(channel ->
+                        ResponseUtil.success("Channel created successfully")
+                );
     }
 
     @Override
     public Mono<ResponseAPI<Void>> updateChannelClient(String channelId, ChannelDTO channelDTO, String ownerId) {
         channelDTO.setId(channelId);
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelDTO", channelDTO);
-        requestRsocket.setPayload("ownerId", ownerId);
+        requestRsocket.setPayload(CHANNEL_DTO, channelDTO);
+        requestRsocket.setPayload(OWNER_ID, ownerId);
+
         return rSocketRequester
-                .route("channel.update")
+                .route(ChannelServerController.UPDATE)
                 .data(requestRsocket)
                 .retrieveMono(Channel.class)
-                .map(channel -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Channel updated successfully")
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to update channel: " + e.getMessage())
-                        .build()));
+                .map(channel ->
+                        ResponseUtil.success("Channel updated successfully")
+                );
     }
 
     @Override
     public Mono<ResponseAPI<Void>> deleteChannelClient(String channelId, String ownerId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("ownerId", ownerId);
-        return rSocketRequester
-                .route("channel.delete")
-                .data(requestRsocket)
-                .retrieveMono(Void.class)
-                .then(Mono.fromCallable(() -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Channel deleted successfully")
-                        .build()))
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to deleted channel: " + e.getMessage())
-                        .build()));
-    }
+        requestRsocket.setPayload(CHANNEL_ID, channelId);
+        requestRsocket.setPayload(OWNER_ID, ownerId);
 
+        return rSocketRequester
+                .route(ChannelServerController.DELETE)
+                .data(requestRsocket)
+                .retrieveMono(Channel.class)
+                .then(Mono.fromCallable(() ->
+                        ResponseUtil.success("Channel deleted successfully"))
+                );
+    }
+    //#endregion
+
+    //#region Member actions
     @Override
     public Mono<ResponseAPI<Void>> joinChannelByIdClient(String channelId, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("userId", userId);
+        requestRsocket.setPayload(CHANNEL_ID, channelId);
+        requestRsocket.setPayload(USER_ID, userId);
+
         return rSocketRequester
-                .route("channel.joinById")
+                .route(ChannelServerController.JOIN_BY_ID)
                 .data(requestRsocket)
-                .retrieveMono(String.class)
-                .map(channel -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Join channel successfully")
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to join channel: " + e.getMessage())
-                        .build()));
+                .retrieveMono(Channel.class)
+                .map(channel ->
+                        ResponseUtil.success("Joined channel successfully")
+                );
     }
 
     @Override
     public Mono<ResponseAPI<Void>> joinChannelByUrlClient(String url, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("url", url);
-        requestRsocket.setPayload("userId", userId);
+        requestRsocket.setPayload(URL, url);
+        requestRsocket.setPayload(USER_ID, userId);
+
         return rSocketRequester
-                .route("channel.joinByUrl")
+                .route(ChannelServerController.JOIN_BY_URL)
                 .data(url)
-                .retrieveMono(String.class)
-                .map(channel -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Join channel successfully")
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to join channel: " + e.getMessage())
-                        .build()));
+                .retrieveMono(Channel.class)
+                .map(channel ->
+                        ResponseUtil.success("Joined channel successfully")
+                );
     }
 
     @Override
     public Mono<ResponseAPI<Void>> leaveChannelByIdClient(String channelId, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("userId", userId);
-        return rSocketRequester
-                .route("channel.leaveById")
-                .data(requestRsocket)
-                .retrieveMono(String.class)
-                .map(channel -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Leave channel successfully")
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to leave channel: " + e.getMessage())
-                        .build()));
-    }
-
-    @Override
-    public Mono<ResponseAPI<PageResponse<ChannelJoinPageDTO>>> getChannelsClient(int page, int size) {
-        RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("page", page);
-        requestRsocket.setPayload("size", size);
-        return rSocketRequester
-                .route("channel.getChannels")
-                .data(requestRsocket)
-                .retrieveMono(new ParameterizedTypeReference<PageResponse<ChannelJoinPageDTO>>() {})
-                .map(channelsPage -> ResponseAPI.<PageResponse<ChannelJoinPageDTO>>builder()
-                        .code(200)
-                        .message(channelsPage != null? "Fetched channels successfully" : "No channels found")
-                        .data(channelsPage)
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<PageResponse<ChannelJoinPageDTO>>builder()
-                        .code(500)
-                        .message("Failed to fetched channels: " + e.getMessage())
-                        .build()));
-    }
-
-    @Override
-    public Mono<ResponseAPI<String>> getMyChannelClient(String ownerId) throws JsonProcessingException {
-        RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("ownerId", ownerId);
-        System.out.println(new ObjectMapper().writeValueAsString(requestRsocket));
+        requestRsocket.setPayload(CHANNEL_ID, channelId);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
-                .route("channel.getMyChannel")
+                .route(ChannelServerController.LEAVE_BY_ID)
                 .data(requestRsocket)
-                .retrieveMono(String.class)
-                .map(channelId -> ResponseAPI.<String>builder()
-                        .code(200)
-                        .message("Fetched my channel successfully")
-                        .data(channelId)
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<String>builder()
-                        .code(500)
-                        .message("Failed to fetched my channel: " + e.getMessage())
-                        .build()));
-    }
-
-    @Override
-    public Mono<ResponseAPI<ChannelInfoDTO>> getChannelByIdClient(String channelId, String userId) {
-        RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("userId", userId);
-        return rSocketRequester
-                .route("channel.getChannelById")
-                .data(requestRsocket)
-                .retrieveMono(ChannelInfoDTO.class)
-                .map(channel -> ResponseAPI.<ChannelInfoDTO>builder()
-                        .code(200)
-                        .message("Fetched channel successfully")
-                        .data(channel)
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<ChannelInfoDTO>builder()
-                        .code(500)
-                        .message("Failed to fetched channel: " + e.getMessage())
-                        .build()));
-    }
-
-    @Override
-    public Mono<ResponseAPI<List<MemberInfoDTO>>> searchMemberByDisplayName(String channelId, String displayNameKeyword) {
-        RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("displayNameKeyword", displayNameKeyword);
-        return rSocketRequester
-                .route("channel.searchMemberByDisplayName")
-                .data(requestRsocket)
-                .retrieveFlux(MemberInfoDTO.class)
-                .collectList()
-                .map(memberList -> ResponseAPI.<List<MemberInfoDTO>>builder()
-                        .code(200)
-                        .message("Search member by display name successfully")
-                        .data(memberList)
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<List<MemberInfoDTO>>builder()
-                        .code(500)
-                        .message("Failed to search member by display name: " + e.getMessage())
-                        .build()));
+                .retrieveMono(Channel.class)
+                .map(channel ->
+                        ResponseUtil.success("Leaved channel successfully")
+                );
     }
 
     @Override
     public Mono<ResponseAPI<Void>> kickMember(String channelId, String memberId, String ownerId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("memberId", memberId);
-        requestRsocket.setPayload("ownerId", ownerId);
+        requestRsocket.setPayload(CHANNEL_ID, channelId);
+        requestRsocket.setPayload(MEMBER_ID, memberId);
+        requestRsocket.setPayload(OWNER_ID, ownerId);
+
         return rSocketRequester
-                .route("channel.kickMember")
+                .route(ChannelServerController.KICK_MEMBER)
                 .data(requestRsocket)
-                .retrieveMono(Void.class)
-                .then(Mono.fromCallable(() -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Member kicked successfully")
-                        .build()))
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to kick member: " + e.getMessage())
-                        .build()));
+                .retrieveMono(Channel.class)
+                .map(channel ->
+                        ResponseUtil.success("Member kicked successfully")
+                );
     }
 
     @Override
     public Mono<ResponseAPI<Void>> transferOwnership(String channelId, String newOwnerId, String oldOwnerId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("newOwnerId", newOwnerId);
-        requestRsocket.setPayload("oldOwnerId", oldOwnerId);
+        requestRsocket.setPayload(CHANNEL_ID, channelId);
+        requestRsocket.setPayload(NEW_OWNER_ID, newOwnerId);
+        requestRsocket.setPayload(OLD_OWNER_ID, oldOwnerId);
+
         return rSocketRequester
-                .route("channel.transferOwnership")
+                .route(ChannelServerController.TRANSFER_OWNERSHIP)
                 .data(requestRsocket)
                 .retrieveMono(Channel.class)
-                .map(channel -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Ownership transferred successfully")
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to transfer ownership: " + e.getMessage())
-                        .build()));
+                .map(channel ->
+                        ResponseUtil.success("Owner transferred successfully")
+                );
     }
+    //#endregion
+
+    //#region GET methods
+    @Override
+    public Mono<ResponseAPI<PageResponse<ChannelJoinPageDTO>>> getChannelsClient(int page, int size) {
+        RequestRsocket requestRsocket = new RequestRsocket();
+        requestRsocket.setPayload(PAGE, page);
+        requestRsocket.setPayload(SIZE, size);
+
+        return rSocketRequester
+                .route(ChannelServerController.GET_CHANNELS)
+                .data(requestRsocket)
+                .retrieveMono(new ParameterizedTypeReference<PageResponse<ChannelJoinPageDTO>>() {})
+                .map(channelsPage -> {
+                    String message = channelsPage != null? "Fetched channels successfully" : "No channels found";
+                    return ResponseUtil.success(channelsPage, message);
+                });
+    }
+
+    @Override
+    public Mono<ResponseAPI<String>> getMyChannelClient(String ownerId){
+        RequestRsocket requestRsocket = new RequestRsocket();
+        requestRsocket.setPayload(OWNER_ID, ownerId);
+
+        return rSocketRequester
+                .route(ChannelServerController.GET_MY_CHANNEL)
+                .data(requestRsocket)
+                .retrieveMono(String.class)
+                .map(channelId ->
+                        ResponseUtil.success(channelId, "Fetched my channel successfully")
+                );
+    }
+
+    @Override
+    public Mono<ResponseAPI<ChannelInfoDTO>> getChannelByIdClient(String channelId, String userId) {
+        RequestRsocket requestRsocket = new RequestRsocket();
+        requestRsocket.setPayload(CHANNEL_ID, channelId);
+        requestRsocket.setPayload(USER_ID, userId);
+
+        return rSocketRequester
+                .route(ChannelServerController.GET_CHANNEL_BY_ID)
+                .data(requestRsocket)
+                .retrieveMono(ChannelInfoDTO.class)
+                .map(channelInfoDTO ->
+                        ResponseUtil.success(channelInfoDTO, "Fetched channel by ID successfully")
+                );
+    }
+
+    @Override
+    public Mono<ResponseAPI<List<MemberInfoDTO>>> searchMemberByDisplayName(String channelId, String displayNameKeyword) {
+        RequestRsocket requestRsocket = new RequestRsocket();
+        requestRsocket.setPayload(CHANNEL_ID, channelId);
+        requestRsocket.setPayload(DISPLAY_NAME_KEYWORD, displayNameKeyword);
+
+        return rSocketRequester
+                .route(ChannelServerController.SEARCH_MEMBER)
+                .data(requestRsocket)
+                .retrieveFlux(MemberInfoDTO.class)
+                .collectList()
+                .map(memberList ->
+                        ResponseUtil.success(memberList, "Search member by display name successfully")
+                );
+    }
+    //#endregion
+
+    //#endregion
 }

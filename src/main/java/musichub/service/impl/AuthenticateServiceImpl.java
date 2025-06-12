@@ -1,5 +1,6 @@
 package musichub.service.impl;
 
+import musichub.common.ResponseUtil;
 import musichub.configuration.security.KeycloakProperties;
 import musichub.dto.AuthenticateDTO.AuthenticateDTO;
 import musichub.dto.AuthenticateDTO.IntrospectDTO;
@@ -22,6 +23,14 @@ public class AuthenticateServiceImpl implements AuthenticateService {
     KeycloakProperties keycloak;
     WebClient webClient;
 
+    private static final String CLIENT_ID = "client_id";
+    private static final String CLIENT_SECRET = "client_secret";
+    private static final String GRANT_TYPE = "grant_type";
+    private static final String USERNAME = "username";
+    private static final String PASSWORD = "password";
+    private static final String INTROSPECT = "/introspect";
+    private static final String TOKEN = "token";
+
     public AuthenticateServiceImpl(KeycloakProperties keycloak, WebClient.Builder builder) {
         this.keycloak = keycloak;
         this.webClient = builder.build();
@@ -31,42 +40,26 @@ public class AuthenticateServiceImpl implements AuthenticateService {
         return webClient.post()
                 .uri(keycloak.getUrls().getAuth())
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-                .body(BodyInserters.fromFormData("client_id", keycloak.getClientId())
-                        .with("client_secret", keycloak.getClientSecret())
-                        .with("grant_type", "password")
-                        .with("username", request.getEmail())
-                        .with("password", request.getPassword()))
+                .body(BodyInserters.fromFormData(CLIENT_ID, keycloak.getClientId())
+                        .with(CLIENT_SECRET, keycloak.getClientSecret())
+                        .with(GRANT_TYPE, PASSWORD)
+                        .with(USERNAME, request.getEmail())
+                        .with(PASSWORD, request.getPassword()))
                 .retrieve()
                 .bodyToMono(TokenResponseDTO.class)
-                .map(response -> ResponseAPI.<TokenResponseDTO>builder()
-                        .code(200)
-                        .message("Authentication successful")
-                        .data(response)
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<TokenResponseDTO>builder()
-                        .code(500)
-                        .message("Authentication failed: " + e.getMessage())
-                        .build()));
+                .map(response -> ResponseUtil.success(response, "Authenticated successfully"));
     }
 
     @Override
     public Mono<ResponseAPI<IntrospectDTO>> introspect(String token){
         return webClient.post()
-                .uri(keycloak.getUrls().getAuth() + "/introspect")
+                .uri(keycloak.getUrls().getAuth() + INTROSPECT)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-                .body(BodyInserters.fromFormData("client_id", keycloak.getClientId())
-                        .with("client_secret", keycloak.getClientSecret())
-                        .with("token", token))
+                .body(BodyInserters.fromFormData(CLIENT_ID, keycloak.getClientId())
+                        .with(CLIENT_SECRET, keycloak.getClientSecret())
+                        .with(TOKEN, token))
                 .retrieve()
                 .bodyToMono(IntrospectDTO.class)
-                .map(response -> ResponseAPI.<IntrospectDTO>builder()
-                        .code(200)
-                        .message("Token introspected successfully")
-                        .data(response)
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<IntrospectDTO>builder()
-                        .code(500)
-                        .message("Failed to introspect token: " + e.getMessage())
-                        .build()));
+                .map(response -> ResponseUtil.success(response, "Token introspected successfully"));
     }
 }

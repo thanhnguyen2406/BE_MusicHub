@@ -34,8 +34,8 @@ public class SongServiceImpl implements SongService {
     SongMapper songMapper;
     RSocketRequester rSocketRequester;
 
-    static boolean LIKED = true;
-    static boolean DISLIKED = false;
+    public static final boolean LIKED = true;
+    public static final boolean DISLIKED = false;
 
     //Server
 

@@ -22,65 +22,78 @@ import java.util.Map;
 public class ChannelServerController {
     private final ChannelService channelService;
 
-    @MessageMapping("channel.create")
+    public static final String CREATE = "channel.create";
+    public static final String UPDATE = "channel.update";
+    public static final String DELETE = "channel.delete";
+    public static final String JOIN_BY_ID = "channel.joinById";
+    public static final String JOIN_BY_URL = "channel.joinByUrl";
+    public static final String LEAVE_BY_ID = "channel.leaveById";
+    public static final String GET_CHANNELS = "channel.getChannels";
+    public static final String GET_MY_CHANNEL = "channel.getMyChannel";
+    public static final String GET_CHANNEL_BY_ID = "channel.getChannelById";
+    public static final String SEARCH_MEMBER = "channel.searchMemberByDisplayName";
+    public static final String KICK_MEMBER = "channel.kickMember";
+    public static final String TRANSFER_OWNERSHIP = "channel.transferOwnership";
+
+    @MessageMapping(CREATE)
     public Mono<Channel> createChannel(@Payload RequestRsocket requestRsocket) {
         return channelService.createChannelServer(requestRsocket);
     }
 
-    @MessageMapping("channel.update")
+    @MessageMapping(UPDATE)
     public Mono<Channel> updateChannel(@Payload RequestRsocket requestRsocket) {
         return channelService.updateChannelServer(requestRsocket);
     }
 
-    @MessageMapping("channel.delete")
+    @MessageMapping(DELETE)
     public Mono<Void> deleteChannel(@Payload RequestRsocket requestRsocket) {
         return channelService.deleteChannelServer(requestRsocket);
     }
 
-    @MessageMapping("channel.joinById")
+    @MessageMapping(JOIN_BY_ID)
     public Mono<Channel> joinChannelById(@Payload RequestRsocket requestRsocket) {
         return channelService.joinChannelByIdServer(requestRsocket);
     }
 
-    @MessageMapping("channel.joinByUrl")
+    @MessageMapping(JOIN_BY_URL)
     public Mono<Channel> joinChannelByUrl(@Payload RequestRsocket requestRsocket) {
         return channelService.joinChannelByUrlServer(requestRsocket);
     }
 
-    @MessageMapping("channel.leaveById")
+    @MessageMapping(LEAVE_BY_ID)
     public Mono<Channel> leaveChannelById(@Payload RequestRsocket requestRsocket) {
         return channelService.leaveChannelByIdServer(requestRsocket);
     }
 
-    @MessageMapping("channel.getChannels")
+    @MessageMapping(KICK_MEMBER)
+    public Mono<Channel> kickMember(@Payload RequestRsocket requestRsocket) {
+        return channelService.kickMemberServer(requestRsocket);
+    }
+
+    @MessageMapping(TRANSFER_OWNERSHIP)
+    public Mono<Channel> transferOwnership(@Payload RequestRsocket requestRsocket) {
+        return channelService.transferOwnershipServer(requestRsocket);
+    }
+
+    @MessageMapping(GET_CHANNELS)
     public Mono<PageResponse<ChannelJoinPageDTO>> getChannels(@Payload RequestRsocket requestRsocket) {
         return channelService.getChannelsServer(requestRsocket);
     }
 
-    @MessageMapping("channel.getMyChannel")
+    @MessageMapping(GET_MY_CHANNEL)
     public Mono<String> getMyChannel(@Payload RequestRsocket request) {
         System.out.println("getMyChannel received");
         return channelService.getMyChannelServer(request);
     }
 
-    @MessageMapping("channel.getChannelById")
+    @MessageMapping(GET_CHANNEL_BY_ID)
     public Mono<ChannelInfoDTO> getChannelById(@Payload RequestRsocket requestRsocket) {
         return channelService.getChannelByIdServer(requestRsocket);
     }
 
-    @MessageMapping("channel.searchMemberByDisplayName")
+    @MessageMapping(SEARCH_MEMBER)
     public Flux<MemberInfoDTO> searchMemberByDisplayName(@Payload RequestRsocket requestRsocket) {
         return channelService.searchMemberByDisplayName(requestRsocket);
-    }
-
-    @MessageMapping("channel.kickMember")
-    public Mono<Channel> kickMember(@Payload RequestRsocket requestRsocket) {
-        return channelService.kickMemberServer(requestRsocket);
-    }
-
-    @MessageMapping("channel.transferOwnership")
-    public Mono<Channel> transferOwnership(@Payload RequestRsocket requestRsocket) {
-        return channelService.transferOwnershipServer(requestRsocket);
     }
 
     @MessageMapping("test")
