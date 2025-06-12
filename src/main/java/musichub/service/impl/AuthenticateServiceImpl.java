@@ -1,11 +1,11 @@
-package musichub.service.implement;
+package musichub.service.impl;
 
 import musichub.configuration.security.KeycloakProperties;
 import musichub.dto.AuthenticateDTO.AuthenticateDTO;
 import musichub.dto.AuthenticateDTO.IntrospectDTO;
 import musichub.dto.AuthenticateDTO.TokenResponseDTO;
 import musichub.dto.ResponseAPI;
-import musichub.service.interf.IAuthenticateService;
+import musichub.service.AuthenticateService;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -18,11 +18,11 @@ import reactor.core.publisher.Mono;
 @Service
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class AuthenticateService implements IAuthenticateService {
+public class AuthenticateServiceImpl implements AuthenticateService {
     KeycloakProperties keycloak;
     WebClient webClient;
 
-    public AuthenticateService(KeycloakProperties keycloak, WebClient.Builder builder) {
+    public AuthenticateServiceImpl(KeycloakProperties keycloak, WebClient.Builder builder) {
         this.keycloak = keycloak;
         this.webClient = builder.build();
     }

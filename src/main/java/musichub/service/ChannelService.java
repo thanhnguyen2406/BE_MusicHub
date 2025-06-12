@@ -1,4 +1,4 @@
-package musichub.service.interf;
+package musichub.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import musichub.dto.ChannelDTO.ChannelDTO;
@@ -9,14 +9,12 @@ import musichub.dto.RequestRsocket;
 import musichub.dto.ResponseAPI;
 import musichub.dto.UserDTO.MemberInfoDTO;
 import musichub.model.Channel;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.security.Principal;
 import java.util.List;
 
-public interface IChannelService {
+public interface ChannelService {
     //Server
     Mono<Channel> createChannelServer(RequestRsocket requestRsocket);
     Mono<Channel> updateChannelServer(RequestRsocket requestRsocket);

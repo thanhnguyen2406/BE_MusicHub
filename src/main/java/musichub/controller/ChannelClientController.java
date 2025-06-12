@@ -7,7 +7,7 @@ import musichub.dto.ChannelDTO.ChannelJoinPageDTO;
 import musichub.dto.PageResponse;
 import musichub.dto.ResponseAPI;
 import musichub.dto.UserDTO.MemberInfoDTO;
-import musichub.service.interf.IChannelService;
+import musichub.service.ChannelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -19,7 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/channels")
 public class ChannelClientController {
-    private final IChannelService channelService;
+    private final ChannelService channelService;
 
     @PostMapping
     public Mono<ResponseAPI<Void>> createChannel(@RequestBody ChannelDTO channelDTO, Principal principal) {

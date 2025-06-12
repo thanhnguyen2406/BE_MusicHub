@@ -3,7 +3,7 @@ package musichub.controller;
 import musichub.dto.ResponseAPI;
 import musichub.dto.UserDTO.ResetPasswordDTO;
 import musichub.dto.UserDTO.UserDTO;
-import musichub.service.interf.IUserService;
+import musichub.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +15,7 @@ import java.security.Principal;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
-    private final IUserService userService;
+    private final UserService userService;
 
     @GetMapping("/my-info")
     public Mono<ResponseEntity<ResponseAPI<UserDTO>>> getMyInfo(Principal principal) {

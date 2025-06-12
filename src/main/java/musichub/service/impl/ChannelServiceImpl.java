@@ -1,4 +1,4 @@
-package musichub.service.implement;
+package musichub.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +16,7 @@ import musichub.mapper.UserMapper;
 import musichub.model.Channel;
 import musichub.repository.ChannelRepository;
 import musichub.repository.UserRepository;
-import musichub.service.interf.IChannelService;
+import musichub.service.ChannelService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -35,7 +35,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
-public class ChannelService implements IChannelService {
+public class ChannelServiceImpl implements ChannelService {
     ChannelRepository channelRepository;
     UserRepository userRepository;
     ChannelMapper channelMapper;

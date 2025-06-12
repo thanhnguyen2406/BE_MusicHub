@@ -6,7 +6,7 @@ import musichub.dto.PageResponse;
 import musichub.dto.RequestRsocket;
 import musichub.dto.UserDTO.MemberInfoDTO;
 import musichub.model.Channel;
-import musichub.service.interf.IChannelService;
+import musichub.service.ChannelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -20,7 +20,7 @@ import java.util.Map;
 @Controller
 @RequiredArgsConstructor
 public class ChannelServerController {
-    private final IChannelService channelService;
+    private final ChannelService channelService;
 
     @MessageMapping("channel.create")
     public Mono<Channel> createChannel(@Payload RequestRsocket requestRsocket) {

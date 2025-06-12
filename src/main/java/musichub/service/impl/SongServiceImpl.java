@@ -1,4 +1,4 @@
-package musichub.service.implement;
+package musichub.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -15,7 +15,7 @@ import musichub.model.Song;
 import musichub.model.Vote;
 import musichub.repository.ChannelRepository;
 import musichub.repository.SongRepository;
-import musichub.service.interf.ISongService;
+import musichub.service.SongService;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -28,7 +28,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
-public class SongService implements ISongService {
+public class SongServiceImpl implements SongService {
     SongRepository songRepository;
     ChannelRepository channelRepository;
     SongMapper songMapper;
