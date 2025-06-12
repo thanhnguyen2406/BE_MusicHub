@@ -13,17 +13,21 @@ import reactor.core.publisher.Mono;
 public class SongServerController {
     private final SongService songService;
 
-    @MessageMapping("song.add")
+    public static final String CREATE = "song.add";
+    public static final String DELETE = "song.delete";
+    public static final String VOTE = "song.vote";
+
+    @MessageMapping(CREATE)
     public Mono<Song> addSongServer(RequestRsocket requestRsocket) {
         return songService.addSongServer(requestRsocket);
     }
 
-    @MessageMapping("song.delete")
+    @MessageMapping(DELETE)
     public Mono<Void> deleteSongServer(RequestRsocket requestRsocket) {
         return songService.deleteSongServer(requestRsocket);
     }
 
-    @MessageMapping("song.vote")
+    @MessageMapping(VOTE)
     public Mono<Song> voteSongServer(RequestRsocket requestRsocket) {
         return songService.voteSongServer(requestRsocket);
     }

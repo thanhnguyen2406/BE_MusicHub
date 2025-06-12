@@ -24,6 +24,7 @@ public enum ErrorCode {
     CHANNEL_IS_FULL(400, "Channel is full"),
     CANNOT_KICK_OWNER(400, "You cannot kick yourself, the owner of this channel"),
     //400: Invalid song resource
+    INVALID_VOTE_TYPE(400, "Invalid vote type"),
 
     //404: Resource not found errors
     USER_NOT_FOUND(404, "User not found"),

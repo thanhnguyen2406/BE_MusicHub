@@ -2,6 +2,9 @@ package musichub.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import musichub.common.ChannelPermissionUtil;
+import musichub.common.ResponseUtil;
+import musichub.controller.SongServerController;
 import musichub.dto.RequestRsocket;
 import musichub.dto.ResponseAPI;
 import musichub.dto.SongDTO.SongDTO;
@@ -34,176 +37,171 @@ public class SongServiceImpl implements SongService {
     SongMapper songMapper;
     RSocketRequester rSocketRequester;
 
-    public static final boolean LIKED = true;
-    public static final boolean DISLIKED = false;
+    private static final boolean LIKED = true;
+    private static final boolean DISLIKED = false;
+    private static final String USER_ID = "userId";
+    private static final String SONG_ID = "songId";
+    private static final String SONG_DTO = "songDTO";
+    private static final String VOTE_TYPE = "voteType";
+    private static final String LIKE = "like";
 
-    //Server
+    //#region Server Service
 
     @Override
     public Mono<Song> addSongServer(RequestRsocket requestRsocket) {
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
-        String userId = requestRsocket.getPayloadAs("userId", String.class);
-        SongDTO songDTO = requestRsocket.getPayloadAs("songDTO", SongDTO.class);
+        String channelId = requestRsocket.getPayloadAs(ChannelServiceImpl.CHANNEL_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
+        SongDTO songDTO = requestRsocket.getPayloadAs(SONG_DTO, SongDTO.class);
 
-        return channelRepository.findById(requestRsocket.getPayloadAs("channelId", String.class))
-                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (!channel.getAddedBy().equals(userId) && !channel.getAllowOthersToManageSongs()) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
-                    }
-                        Song song = songMapper.toSong(songDTO, channelId, userId);
+        return getChannelIfExists(channelId)
+                .flatMap(channel -> verifyOwnerPermission(channel, userId)
+                        .then(saveSongAndUpdateChannel(songDTO, channel, userId))
+                );
+    }
 
-                        return songRepository.save(song)
-                                .flatMap(savedSong -> {
-                                    channel.getSongs().add(savedSong.getId());
-                                    return sortChannelSongs(channel)
-                                            .then(channelRepository.save(channel))
-                                            .thenReturn(savedSong);
-                                });
+    private Mono<Void> verifyOwnerPermission(Channel channel, String userId) {
+        return ChannelPermissionUtil.requireOwner(channel, userId);
+    }
+
+    private Mono<Song> saveSongAndUpdateChannel(SongDTO songDTO, Channel channel, String userId) {
+        Song song = songMapper.toSong(songDTO, channel.getId(), userId);
+
+        return songRepository.save(song)
+                .flatMap(savedSong -> {
+                    channel.getSongs().add(savedSong.getId());
+                    return sortChannelSongs(channel)
+                            .then(channelRepository.save(channel))
+                            .thenReturn(savedSong);
                 });
     }
 
     @Override
     public Mono<Void> deleteSongServer(RequestRsocket requestRsocket) {
-        String channelId = requestRsocket.getPayloadAs("channelId", String.class);
-        String userId = requestRsocket.getPayloadAs("userId", String.class);
-        String songId = requestRsocket.getPayloadAs("songId", String.class);
+        String channelId = requestRsocket.getPayloadAs(ChannelServiceImpl.CHANNEL_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
+        String songId = requestRsocket.getPayloadAs(SONG_ID, String.class);
 
+        return getChannelIfExists(channelId)
+                .flatMap(channel -> ChannelPermissionUtil.requireAllowManageSongs(channel, userId)
+                        .then(deleteSongFromChannel(channel, songId)));
+    }
+
+    private Mono<Void> deleteSongFromChannel(Channel channel, String songId) {
+        return songRepository.findById(songId)
+                .switchIfEmpty(Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND)))
+                .flatMap(song -> ChannelPermissionUtil.requireSongContainedInChannel(channel, songId)
+                        .then(songRepository.delete(song))
+                        .then(channelRepository.save(removeSongFromChannel(channel, songId)))
+                        .flatMap(this::sortChannelSongs)
+                        .then());
+    }
+
+    private Channel removeSongFromChannel(Channel channel, String songId) {
+        channel.getSongs().remove(songId);
+        return channel;
+    }
+
+    private Mono<Channel> getChannelIfExists(String channelId) {
         return channelRepository.findById(channelId)
-                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (!channel.getAddedBy().equals(userId) && !channel.getAllowOthersToManageSongs()) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER));
-                    }
-                    return songRepository.findById(songId)
-                            .switchIfEmpty(Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND)))
-                            .flatMap(song -> {
-                                if (!channel.getSongs().contains(songId)) {
-                                    return Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND));
-                                }
-                                channel.getSongs().remove(songId);
-                                return songRepository.delete(song)
-                                        .then(channelRepository.save(channel))
-                                        .flatMap(this::sortChannelSongs)
-                                        .then();
-                            });
-                });
+                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)));
     }
 
     @Override
     public Mono<Song> voteSongServer(RequestRsocket requestRsocket) {
-        String userId = requestRsocket.getPayloadAs("userId", String.class);
-        String songId = requestRsocket.getPayloadAs("songId", String.class);
-        String voteType = requestRsocket.getPayloadAs("voteType", String.class);
+        String channelId = requestRsocket.getPayloadAs(ChannelServiceImpl.CHANNEL_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
+        String songId = requestRsocket.getPayloadAs(SONG_ID, String.class);
+        String voteType = requestRsocket.getPayloadAs(VOTE_TYPE, String.class);
 
-        return channelRepository.findById(requestRsocket.getPayloadAs("channelId", String.class))
-                .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
-                .flatMap(channel -> {
-                    if (!channel.getMembers().containsKey(userId)) {
-                        return Mono.error(new AppException(ErrorCode.UNAUTHENTICATED_CHANNEL_MEMBER));
-                    }
-                    if (!channel.getSongs().contains(songId)) {
-                        return Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND));
-                    }
-
-                    Mono<Song> voteMono = voteType.equals("like")
-                            ? likeSong(songId, userId)
-                            : dislikeSong(songId, userId);
-
-                    return voteMono.flatMap(votedSong ->
-                            sortChannelSongs(channel).thenReturn(votedSong)
-                    );
-                });
+        return getChannelIfExists(channelId)
+                .flatMap(channel ->
+                        ChannelPermissionUtil.requireMember(channel, userId)
+                                .then(ChannelPermissionUtil.requireSongContainedInChannel(channel, songId))
+                                .then(getVoteMono(voteType, songId, userId))
+                                .flatMap(votedSong ->
+                                        sortChannelSongs(channel).thenReturn(votedSong)
+                                )
+                );
     }
 
+    private Mono<Song> getVoteMono(String voteType, String songId, String userId) {
+        return switch (voteType) {
+            case "like" -> likeSong(songId, userId);
+            case "dislike" -> dislikeSong(songId, userId);
+            default -> Mono.error(new AppException(ErrorCode.INVALID_VOTE_TYPE));
+        };
+    }
+    //#endregion
 
-    //Client
+    //#region Client Service
 
     @Override
     public Mono<ResponseAPI<Void>> addSong(String channelId, SongDTO songDTO, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("songDTO", songDTO);
-        requestRsocket.setPayload("userId", userId);
+        requestRsocket.setPayload(ChannelServiceImpl.CHANNEL_ID, channelId);
+        requestRsocket.setPayload(SONG_DTO, songDTO);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
-                .route("song.add")
+                .route(SongServerController.CREATE)
                 .data(requestRsocket)
                 .retrieveMono(Song.class)
-                .map(channel -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Song created successfully")
-                        .build())
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to create song: " + e.getMessage())
-                        .build()));
+                .map(song -> ResponseUtil.success("Song added successfully"));
     }
 
     @Override
     public Mono<ResponseAPI<Void>> deleteSong(String channelId, String songId, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("songId", songId);
-        requestRsocket.setPayload("userId", userId);
+        requestRsocket.setPayload(ChannelServiceImpl.CHANNEL_ID, channelId);
+        requestRsocket.setPayload(SONG_ID, songId);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
-                .route("song.delete")
+                .route(SongServerController.DELETE)
                 .data(requestRsocket)
                 .retrieveMono(Void.class)
-                .then(Mono.fromCallable(() -> ResponseAPI.<Void>builder()
-                        .code(200)
-                        .message("Song deleted successfully")
-                        .build()))
-                .onErrorResume(e -> Mono.just(ResponseAPI.<Void>builder()
-                        .code(500)
-                        .message("Failed to create song: " + e.getMessage())
-                        .build()));
+                .then(Mono.fromCallable(() -> ResponseUtil.success("Song deleted successfully")));
     }
 
     @Override
     public Mono<ResponseAPI<VoteSongDTO>> voteSong(String channelId, String songId, String userId, String voteType) {
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload("channelId", channelId);
-        requestRsocket.setPayload("songId", songId);
-        requestRsocket.setPayload("userId", userId);
-        requestRsocket.setPayload("voteType", voteType);
+        requestRsocket.setPayload(ChannelServiceImpl.CHANNEL_ID, channelId);
+        requestRsocket.setPayload(SONG_ID, songId);
+        requestRsocket.setPayload(USER_ID, userId);
+        requestRsocket.setPayload(VOTE_TYPE, voteType);
 
         return rSocketRequester
-                .route("song.vote")
+                .route(SongServerController.VOTE)
                 .data(requestRsocket)
                 .retrieveMono(Void.class)
-                .then(Mono.fromCallable(() -> ResponseAPI.<VoteSongDTO>builder()
-                        .code(200)
-                        .message("Song voted successfully")
-                        .build()))
-                .onErrorResume(e -> Mono.just(ResponseAPI.<VoteSongDTO>builder()
-                        .code(500)
-                        .message("Failed to vote song: " + e.getMessage())
-                        .build()));
+                .then(Mono.fromCallable(() -> ResponseUtil.success("Song voted successfully")));
     }
 
     public Mono<Channel> sortChannelSongs(Channel channel) {
         return songRepository.findAllById(channel.getSongs())
                 .collectList()
-                .map(songs -> {
-                    List<Song> sorted = songs.stream()
-                            .sorted(Comparator
-                                    .comparing(Song::getStatus, Comparator.comparingInt(this::getStatusPriority))
-                                    .thenComparing(song -> {
-                                        if (song.getStatus() == Status.WAITING) {
-                                            return song.getVote().getUpVoteCount() - song.getVote().getDownVoteCount();
-                                        }
-                                        return 0;
-                                    })
-                            )
-                            .toList();
-
-                    List<String> sortedIds = sorted.stream().map(Song::getId).toList();
-                    channel.setSongs(sortedIds);
-                    return channel;
-                })
+                .map(this::sortSongs)
+                .map(sortedSongs -> updateChannelWithSortedSongs(channel, sortedSongs))
                 .flatMap(channelRepository::save);
+    }
+
+    private List<Song> sortSongs(List<Song> songs) {
+        return songs.stream()
+                .sorted(
+                        Comparator
+                                .comparing(Song::getStatus, Comparator.comparingInt(this::getStatusPriority))
+                                .thenComparing(song -> song.getStatus() == Status.WAITING
+                                        ? song.getVote().getUpVoteCount() - song.getVote().getDownVoteCount()
+                                        : 0)
+                )
+                .toList();
+    }
+
+    private Channel updateChannelWithSortedSongs(Channel channel, List<Song> sortedSongs) {
+        List<String> sortedIds = sortedSongs.stream().map(Song::getId).toList();
+        channel.setSongs(sortedIds);
+        return channel;
     }
 
     private int getStatusPriority(Status status) {
@@ -215,41 +213,14 @@ public class SongServiceImpl implements SongService {
     }
 
     public Mono<Song> likeSong(String songId, String userId) {
-        return songRepository.findById(songId)
-                .switchIfEmpty(Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND)))
-                .flatMap(song -> {
-                    Vote vote = song.getVote();
-                    Map<String, Boolean> userVotes = vote.getUserVotes();
-                    Map<String, LocalDateTime> voteTimestamps = vote.getVoteTimestamps();
-
-                    if (userVotes.containsKey(userId)) {
-                        boolean previousVote = userVotes.get(userId);
-                        if (previousVote) {
-                            // Unlike (remove like)
-                            userVotes.remove(userId);
-                            voteTimestamps.remove(userId);
-                            vote.setUpVoteCount(Math.max(0, vote.getUpVoteCount() - 1));
-                        } else {
-                            // Change from dislike to like
-                            userVotes.put(userId, LIKED);
-                            voteTimestamps.put(userId, LocalDateTime.now());
-                            vote.setDownVoteCount(Math.max(0, vote.getDownVoteCount() - 1));
-                            vote.setUpVoteCount(vote.getUpVoteCount() + 1);
-                        }
-                    } else {
-                        // First time like
-                        userVotes.put(userId, LIKED);
-                        voteTimestamps.put(userId, LocalDateTime.now());
-                        vote.setUpVoteCount(vote.getUpVoteCount() + 1);
-                    }
-                    vote.setUserVotes(userVotes);
-                    vote.setVoteTimestamps(voteTimestamps);
-                    song.setVote(vote);
-                    return songRepository.save(song);
-                });
+        return processVote(songId, userId, true);
     }
 
     public Mono<Song> dislikeSong(String songId, String userId) {
+        return processVote(songId, userId, false);
+    }
+
+    private Mono<Song> processVote(String songId, String userId, boolean isLike) {
         return songRepository.findById(songId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.SONG_NOT_FOUND)))
                 .flatMap(song -> {
@@ -257,30 +228,33 @@ public class SongServiceImpl implements SongService {
                     Map<String, Boolean> userVotes = vote.getUserVotes();
                     Map<String, LocalDateTime> voteTimestamps = vote.getVoteTimestamps();
 
-                    if (userVotes.containsKey(userId)) {
-                        boolean previousVote = userVotes.get(userId);
-                        if (!previousVote) {
-                            // remove dislike
-                            userVotes.remove(userId);
-                            voteTimestamps.remove(userId);
-                            vote.setDownVoteCount(Math.max(0, vote.getDownVoteCount() - 1));
-                        } else {
-                            // Change from like to dislike
-                            userVotes.put(userId, DISLIKED);
-                            voteTimestamps.put(userId, LocalDateTime.now());
-                            vote.setUpVoteCount(Math.max(0, vote.getUpVoteCount() - 1));
-                            vote.setDownVoteCount(vote.getDownVoteCount() + 1);
-                        }
+                    boolean hasVoted = userVotes.containsKey(userId);
+                    boolean previousVote = userVotes.getOrDefault(userId, !isLike);
+
+                    if (hasVoted && previousVote == isLike) {
+                        userVotes.remove(userId);
+                        voteTimestamps.remove(userId);
+                        updateVoteCount(vote, isLike, -1);
                     } else {
-                        // First time dislike
-                        userVotes.put(userId, DISLIKED);
+                        userVotes.put(userId, isLike);
                         voteTimestamps.put(userId, LocalDateTime.now());
-                        vote.setDownVoteCount(vote.getDownVoteCount() + 1);
+                        if (hasVoted) updateVoteCount(vote, !isLike, -1);
+                        updateVoteCount(vote, isLike, +1);
                     }
+
                     vote.setUserVotes(userVotes);
                     vote.setVoteTimestamps(voteTimestamps);
                     song.setVote(vote);
                     return songRepository.save(song);
                 });
     }
+
+    private void updateVoteCount(Vote vote, boolean isLike, int delta) {
+        if (isLike) {
+            vote.setUpVoteCount(Math.max(0, vote.getUpVoteCount() + delta));
+        } else {
+            vote.setDownVoteCount(Math.max(0, vote.getDownVoteCount() + delta));
+        }
+    }
+    //#endregion
 }

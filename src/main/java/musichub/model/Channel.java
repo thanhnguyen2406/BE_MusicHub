@@ -95,4 +95,18 @@ public class Channel extends BaseEntity{
     public boolean isOwner(String userId) {
         return this.owner.getId().equals(userId);
     }
+
+    public void addSong(String songId) {
+        this.songs.add(songId);
+        this.setUpdatedAt(LocalDateTime.now());
+    }
+
+    public void removeSong(String songId) {
+        this.songs.remove(songId);
+        this.setUpdatedAt(LocalDateTime.now());
+    }
+
+    public boolean isContainSong(String songId) {
+        return this.songs.contains(songId);
+    }
 }

@@ -42,7 +42,6 @@ public class ChannelServiceImpl implements ChannelService {
 
     public static final String CHANNEL_ID = "channelId";
     private static final String CHANNEL_DTO = "channelDTO";
-    public static final String OWNER_ID = "ownerId";
     private static final String NEW_OWNER_ID = "newOwnerId";
     private static final String OLD_OWNER_ID = "oldOwnerId";
     private static final String USER_ID = "userId";
@@ -57,10 +56,10 @@ public class ChannelServiceImpl implements ChannelService {
     //#region Channel CRUD
     @Override
     public Mono<Channel> createChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
         ChannelDTO channelDTO = requestRsocket.getPayloadAs(CHANNEL_DTO, ChannelDTO.class);
 
-        return userRepository.findById(ownerId)
+        return userRepository.findById(userId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
                 .map(user -> channelMapper.toChannel(channelDTO, user))
                 .flatMap(channelRepository::save);
@@ -68,7 +67,7 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public Mono<Channel> updateChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
         ChannelDTO channelDTO = requestRsocket.getPayloadAs(CHANNEL_DTO, ChannelDTO.class);
 
         return channelRepository.findById(channelDTO.getId())
@@ -77,7 +76,7 @@ public class ChannelServiceImpl implements ChannelService {
                     updateChannel(channel, channelDTO);
 
                     return ChannelPermissionUtil
-                            .requireMember(channel, ownerId)
+                            .requireMember(channel, userId)
                             .then(channelRepository.save(channel));
                 });
     }
@@ -97,14 +96,14 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public Mono<Void> deleteChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
         String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
 
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel ->
                         ChannelPermissionUtil
-                                .requireOwner(channel, ownerId)
+                                .requireOwner(channel, userId)
                                 .then(channelRepository.delete(channel)));
     }
     //#endregion
@@ -160,14 +159,14 @@ public class ChannelServiceImpl implements ChannelService {
     @Override
     public Mono<Channel> kickMemberServer(RequestRsocket requestRsocket) {
         String channelId = requestRsocket.getPayloadAs(CHANNEL_ID, String.class);
-        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
         String memberId = requestRsocket.getPayloadAs(MEMBER_ID, String.class);
 
         return channelRepository.findById(channelId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                 .flatMap(channel ->
                         ChannelPermissionUtil
-                                .requireOwner(channel, ownerId)
+                                .requireOwner(channel, userId)
                                 .then(ChannelPermissionUtil.requireMember(channel, memberId))
                                 .then(ChannelPermissionUtil.requireNotKickingOwner(channel, memberId))
                                 .then(Mono.defer(() -> {
@@ -224,12 +223,12 @@ public class ChannelServiceImpl implements ChannelService {
 
     @Override
     public Mono<String> getMyChannelServer(RequestRsocket requestRsocket) {
-        String ownerId = requestRsocket.getPayloadAs(OWNER_ID, String.class);
+        String userId = requestRsocket.getPayloadAs(USER_ID, String.class);
 
-        return userRepository.findById(ownerId)
+        return userRepository.findById(userId)
                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.USER_NOT_FOUND)))
                 .flatMap(user ->
-                        channelRepository.findByMemberId(ownerId)
+                        channelRepository.findByMemberId(userId)
                                 .switchIfEmpty(Mono.error(new AppException(ErrorCode.CHANNEL_NOT_FOUND)))
                                 .map(Channel::getId)
                 );
@@ -282,10 +281,10 @@ public class ChannelServiceImpl implements ChannelService {
 
     //#region Channel CRUD
     @Override
-    public Mono<ResponseAPI<Void>> createChannelClient(ChannelDTO channelDTO, String ownerId) {
+    public Mono<ResponseAPI<Void>> createChannelClient(ChannelDTO channelDTO, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
         requestRsocket.setPayload(CHANNEL_DTO, channelDTO);
-        requestRsocket.setPayload(OWNER_ID, ownerId);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
                 .route(ChannelServerController.CREATE)
@@ -297,11 +296,11 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
-    public Mono<ResponseAPI<Void>> updateChannelClient(String channelId, ChannelDTO channelDTO, String ownerId) {
+    public Mono<ResponseAPI<Void>> updateChannelClient(String channelId, ChannelDTO channelDTO, String userId) {
         channelDTO.setId(channelId);
         RequestRsocket requestRsocket = new RequestRsocket();
         requestRsocket.setPayload(CHANNEL_DTO, channelDTO);
-        requestRsocket.setPayload(OWNER_ID, ownerId);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
                 .route(ChannelServerController.UPDATE)
@@ -313,10 +312,10 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
-    public Mono<ResponseAPI<Void>> deleteChannelClient(String channelId, String ownerId) {
+    public Mono<ResponseAPI<Void>> deleteChannelClient(String channelId, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
         requestRsocket.setPayload(CHANNEL_ID, channelId);
-        requestRsocket.setPayload(OWNER_ID, ownerId);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
                 .route(ChannelServerController.DELETE)
@@ -375,11 +374,11 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
-    public Mono<ResponseAPI<Void>> kickMember(String channelId, String memberId, String ownerId) {
+    public Mono<ResponseAPI<Void>> kickMember(String channelId, String memberId, String userId) {
         RequestRsocket requestRsocket = new RequestRsocket();
         requestRsocket.setPayload(CHANNEL_ID, channelId);
         requestRsocket.setPayload(MEMBER_ID, memberId);
-        requestRsocket.setPayload(OWNER_ID, ownerId);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
                 .route(ChannelServerController.KICK_MEMBER)
@@ -425,9 +424,9 @@ public class ChannelServiceImpl implements ChannelService {
     }
 
     @Override
-    public Mono<ResponseAPI<String>> getMyChannelClient(String ownerId){
+    public Mono<ResponseAPI<String>> getMyChannelClient(String userId){
         RequestRsocket requestRsocket = new RequestRsocket();
-        requestRsocket.setPayload(OWNER_ID, ownerId);
+        requestRsocket.setPayload(USER_ID, userId);
 
         return rSocketRequester
                 .route(ChannelServerController.GET_MY_CHANNEL)

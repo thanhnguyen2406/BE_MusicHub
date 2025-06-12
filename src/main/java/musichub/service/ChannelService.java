@@ -43,22 +43,22 @@ public interface ChannelService {
     //#region Client Service
 
     //#region Channel CRUD
-    Mono<ResponseAPI<Void>> createChannelClient(ChannelDTO channelDTO, String ownerId);
-    Mono<ResponseAPI<Void>> updateChannelClient(String channelId, ChannelDTO channelDTO, String ownerId);
-    Mono<ResponseAPI<Void>> deleteChannelClient(String channelId, String ownerId);
+    Mono<ResponseAPI<Void>> createChannelClient(ChannelDTO channelDTO, String userId);
+    Mono<ResponseAPI<Void>> updateChannelClient(String channelId, ChannelDTO channelDTO, String userId);
+    Mono<ResponseAPI<Void>> deleteChannelClient(String channelId, String userId);
     //#endregion
 
     //#region Member actions
     Mono<ResponseAPI<Void>> joinChannelByIdClient(String channelId, String userId);
     Mono<ResponseAPI<Void>> joinChannelByUrlClient(String url, String userId);
     Mono<ResponseAPI<Void>> leaveChannelByIdClient(String channelId, String userId);
-    Mono<ResponseAPI<Void>> kickMember(String channelId, String memberId, String ownerId);
+    Mono<ResponseAPI<Void>> kickMember(String channelId, String memberId, String userId);
     Mono<ResponseAPI<Void>> transferOwnership(String channelId, String newOwnerId, String oldOwnerId);
     //#endregion
 
     //#region GET methods
     Mono<ResponseAPI<PageResponse<ChannelJoinPageDTO>>> getChannelsClient(int page, int size);
-    Mono<ResponseAPI<String>> getMyChannelClient(String ownerId) throws JsonProcessingException;
+    Mono<ResponseAPI<String>> getMyChannelClient(String userId);
     Mono<ResponseAPI<ChannelInfoDTO>> getChannelByIdClient(String channelId, String userId);
     Mono<ResponseAPI<List<MemberInfoDTO>>> searchMemberByDisplayName(String channelId, String displayNameKeyword);
     //#endregion

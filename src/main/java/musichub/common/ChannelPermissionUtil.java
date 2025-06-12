@@ -28,5 +28,16 @@ public class ChannelPermissionUtil {
         Map<String, LocalTime> members = channel.getMembers();
         return AssertUtil.isTrueMono(members.size() < channel.getMaxUsers(), ErrorCode.CHANNEL_IS_FULL);
     }
+
+    public static Mono<Void> requireAllowManageSongs(Channel channel, String userId) {
+        boolean isOwner = channel.isOwner(userId);
+        boolean isAllowed = channel.getAllowOthersToManageSongs();
+        return AssertUtil.isTrueMono(isOwner || isAllowed, ErrorCode.UNAUTHENTICATED_CHANNEL_OWNER);
+    }
+
+
+    public static Mono<Void> requireSongContainedInChannel(Channel channel, String songId) {
+        return AssertUtil.isTrueMono(channel.isContainSong(songId), ErrorCode.SONG_NOT_FOUND_CHANNEL);
+    }
 }
 
