@@ -12,7 +12,7 @@
 	<artifactId>MusicHub</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>musichub</name>
-	<description>Module User</description>
+	<description>Music Hub App</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -26,9 +26,7 @@
 		<tag/>
 		<url/>
 	</scm>
-	<properties>
-		<java.version>17</java.version>
-	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -43,7 +41,7 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-mongodb-reactive</artifactId>
-			<version>3.4.4</version>
+			<version>${mongodb.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
@@ -58,7 +56,7 @@
 		<dependency>
 			<groupId>io.github.cdimascio</groupId>
 			<artifactId>dotenv-java</artifactId>
-			<version>3.0.0</version>
+			<version>${dotenv.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -75,7 +73,7 @@
 		<dependency>
 			<groupId>org.keycloak</groupId>
 			<artifactId>keycloak-admin-client</artifactId>
-			<version>26.0.4</version>
+			<version>${keycloak.admin.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -116,14 +114,14 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
-				<version>2.17</version>
+				<version>${maven.checkstyle.plugin.version}</version>
 				<executions>
 					<execution>
 						<id>validate</id>
 						<phase>validate</phase>
 						<configuration>
 							<configLocation>src/main/resources/checkstyle.xml</configLocation>
-							<encoding>UTF-8</encoding>
+							<encoding>${project.build.sourceEncoding}</encoding>
 							<consoleOutput>true</consoleOutput>
 							<failsOnError>true</failsOnError>
 						</configuration>
@@ -135,5 +133,16 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<java.version>17</java.version>
+		<spring.boot.version>3.4.4</spring.boot.version>
+		<mongodb.version>3.4.4</mongodb.version>
+		<dotenv.version>3.0.0</dotenv.version>
+		<keycloak.admin.version>26.0.4</keycloak.admin.version>
+		<checkstyle.plugin.version>2.17</checkstyle.plugin.version>
+		<maven.checkstyle.plugin.version>2.17</maven.checkstyle.plugin.version>
+	</properties>
 
 </project>
