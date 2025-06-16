@@ -1,4 +1,4 @@
-package musichub.configuration;
+package musichub.configuration.security;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.convert.converter.Converter;
@@ -43,7 +43,7 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
 
     private String getPrincipleClaimName(Jwt jwt) {
         String claimName = JwtClaimNames.SUB;
-        String principleAttribute = jwtProperties.getAuth().getConverter().getPrincipleAttribute();
+        String principleAttribute = jwtProperties.getPrincipleAttribute();
         if (principleAttribute != null) {
             claimName = principleAttribute;
         }
@@ -51,7 +51,7 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
     }
 
     private Collection<? extends GrantedAuthority> extractResourceRoles(Jwt jwt) {
-        String resourceId = jwtProperties.getAuth().getConverter().getResourceId();
+        String resourceId = jwtProperties.getResourceId();
         Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
 
         if (resourceAccess == null || !resourceAccess.containsKey(resourceId)) {
