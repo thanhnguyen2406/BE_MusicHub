@@ -5,6 +5,7 @@ spring:
     - jwt
     - keycloak
     - rsocket
+    - openapi
   application:
     name: ${SPRING_APPLICATION_NAME}
   data:

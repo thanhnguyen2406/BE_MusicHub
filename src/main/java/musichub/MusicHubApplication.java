@@ -18,6 +18,16 @@ public class MusicHubApplication {
 			System.setProperty("SPRING_APPLICATION_NAME", dotenv.get("SPRING_APPLICATION_NAME", ""));
 			System.setProperty("SECURITY_PERMIT_PATHS", dotenv.get("SECURITY_PERMIT_PATHS", ""));
 
+			System.setProperty("API_VERSION", dotenv.get("API_VERSION", ""));
+			System.setProperty("API_CONTACT_NAME", dotenv.get("API_CONTACT_NAME", ""));
+			System.setProperty("API_CONTACT_EMAIL", dotenv.get("API_CONTACT_EMAIL", ""));
+			System.setProperty("API_TITLE", dotenv.get("API_TITLE", ""));
+			System.setProperty("API_DESCRIPTION", dotenv.get("API_DESCRIPTION", ""));
+			System.setProperty("API_DEV_URL", dotenv.get("API_DEV_URL", ""));
+			System.setProperty("API_DEV_DESCRIPTION", dotenv.get("API_DEV_DESCRIPTION", ""));
+			System.setProperty("API_DEV_URL", dotenv.get("API_DEV_URL", ""));
+			System.setProperty("API_PROD_DESCRIPTION", dotenv.get("API_PROD_DESCRIPTION", ""));
+
 			System.setProperty("CORS_ALLOWED_ORIGINS", dotenv.get("CORS_ALLOWED_ORIGINS", ""));
 			System.setProperty("CORS_ALLOWED_METHODS", dotenv.get("CORS_ALLOWED_METHODS", ""));
 			System.setProperty("CORS_ALLOWED_HEADERS", dotenv.get("CORS_ALLOWED_HEADERS", ""));

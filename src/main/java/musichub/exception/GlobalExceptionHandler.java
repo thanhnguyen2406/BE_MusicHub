@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
         return Mono.just(ResponseEntity.badRequest().body(response));
     }
 
-    @ExceptionHandler(AppException.class)
+    @ExceptionHandler(Throwable.class)
     public Mono<ResponseEntity<ResponseAPI<Void>>> handleThrowableException(Throwable e) {
         ResponseAPI<Void> response = new ResponseAPI<>();
         response.setCode(500);
