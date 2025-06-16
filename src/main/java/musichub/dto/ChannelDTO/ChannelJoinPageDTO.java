@@ -2,7 +2,6 @@ package musichub.dto.ChannelDTO;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,7 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ChannelDTO {
+public class ChannelJoinPageDTO {
     String id;
     String name;
     String url;
@@ -24,7 +23,7 @@ public class ChannelDTO {
     String password;
     Integer maxUsers;
     Integer currentUsers;
-    Boolean allowOthersToManageSongs;
-    Boolean allowOthersToControlPlayback;
-    Boolean isLocked;
+    boolean isLocked;
+    String ownerDisplayName;
+    String ownerAvatar;
 }

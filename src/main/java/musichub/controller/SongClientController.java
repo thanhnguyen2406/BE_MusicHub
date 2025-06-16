@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import musichub.dto.ResponseAPI;
 import musichub.dto.SongDTO.SongDTO;
 import musichub.dto.SongDTO.VoteSongDTO;
-import musichub.service.interf.ISongService;
+import musichub.service.SongService;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -14,7 +14,7 @@ import java.security.Principal;
 @RequiredArgsConstructor
 @RequestMapping("/channels/{channelId}/songs")
 public class SongClientController {
-    private final ISongService songService;
+    private final SongService songService;
 
     @PostMapping
     public Mono<ResponseAPI<Void>> addSong(@PathVariable String channelId, @RequestBody SongDTO songDTO, Principal principal) {
