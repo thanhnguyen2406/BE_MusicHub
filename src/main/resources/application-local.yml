@@ -1,0 +1,63 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/musicHub
+  application:
+    name: musichub
+  data:
+    mongodb:
+      uri: mongodb://tom_dev:123@localhost:27017/musicHubDB?authSource=admin
+      username: tom_dev
+      password: 123
+  rsocket:
+    server:
+      port: 7000
+      mapping-path: /rsocket
+      transport: websocket
+
+jwt:
+  auth:
+    converter:
+      resource-id: musicHub-reactive
+      principle-attribute: sub
+
+keycloak:
+  domain: http://localhost:8081
+  realm: musicHub
+  clientId: musicHub-reactive
+  clientSecret: 2dq996g6zQUWkKgVVFW4AL2U19vyA4gK
+  urls:
+    auth: http://localhost:8081/realms/musicHub/protocol/openid-connect/token
+
+openapi:
+  info:
+    title: Music Hub API
+    description: Music Hub is a platform for music lovers to discover, share, and enjoy music from around the world. This API provides access to various features such as user management, music channels, songs, and more.
+    version: v1
+    contact:
+      name: Music Hub Support
+      email: thanh.cnguyendev@gmail.com
+  servers:
+    - url: http://localhost:8080
+      description: Development server
+    - url: https://api.musichub.com
+      description: Production server
+
+app:
+  security:
+    permit-paths: /auth/**,/users/register,/channels,/rsocket,/v3/api-docs,/v3/api-docs/**,/swagger-ui.html
+    allowed-origins: http://localhost:5173
+    allowed-methods: GET,POST,PUT,DELETE
+    allowed-headers: "*"
+    allow-credentials: true
+
+logging:
+  level:
+    org.springframework.messaging.rsocket: DEBUG
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
